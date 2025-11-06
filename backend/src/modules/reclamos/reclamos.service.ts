@@ -1,0 +1,866 @@
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import {
+  CreateReclamoDto,
+  UpdateReclamoDto,
+  AsignarReclamoDto,
+  CerrarReclamoDto,
+  RechazarReclamoDto,
+} from './dto';
+import {
+  EstadoReclamo,
+  PrioridadReclamo,
+  Role,
+  Prisma,
+  TipoAuditoria,
+} from '@prisma/client';
+import { WorkflowService } from './services/workflow.service';
+import { AsignacionService } from './services/asignacion.service';
+import { AuditoriaService } from './services/auditoria.service';
+
+@Injectable()
+export class ReclamosService {
+  private readonly logger = new Logger(ReclamosService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private workflowService: WorkflowService,
+    private asignacionService: AsignacionService,
+    private auditoriaService: AuditoriaService,
+  ) {}
+
+  async create(createReclamoDto: CreateReclamoDto, usuarioId: string) {
+    // Generar código único del reclamo
+    const codigo = await this.generarCodigo();
+
+    // Calcular prioridad si no se especifica
+    const prioridad =
+      createReclamoDto.prioridad ||
+      this.calcularPrioridadAutomatica(createReclamoDto.tipo);
+
+    // Calcular fecha límite basada en prioridad
+    const fechaLimite = this.workflowService.calculateSLA(prioridad);
+
+    try {
+      const reclamo = await this.prisma.reclamo.create({
+        data: {
+          codigo,
+          titulo: createReclamoDto.titulo,
+          descripcion: createReclamoDto.descripcion,
+          tipo: createReclamoDto.tipo,
+          tipoServicio: createReclamoDto.tipoServicio,
+          prioridad,
+          estado: EstadoReclamo.ABIERTO,
+          direccion: createReclamoDto.direccion,
+          latitud: createReclamoDto.latitud,
+          longitud: createReclamoDto.longitud,
+          infoContacto: createReclamoDto.infoContacto as Prisma.InputJsonValue,
+          fechaLimite,
+          profesionalId: usuarioId,
+        },
+        include: {
+          profesional: {
+            select: {
+              id: true,
+              nombre: true,
+              apellido: true,
+              email: true,
+              telefono: true,
+            },
+          },
+        },
+      });
+
+      // Registrar en auditoría
+      await this.auditoriaService.registrar(
+        reclamo.id,
+        usuarioId,
+        TipoAuditoria.CREACION,
+        'Reclamo creado',
+        {
+          codigo: reclamo.codigo,
+          tipo: reclamo.tipo,
+          prioridad: reclamo.prioridad,
+        },
+      );
+
+      this.logger.log(`Reclamo ${codigo} creado por usuario ${usuarioId}`);
+
+      return this.formatearReclamo(reclamo);
+    } catch (error) {
+      this.logger.error('Error al crear reclamo', error);
+      throw new BadRequestException('Error al crear reclamo');
+    }
+  }
+
+  async findAll(params?: {
+    skip?: number;
+    take?: number;
+    where?: Prisma.ReclamoWhereInput;
+    orderBy?: Prisma.ReclamoOrderByWithRelationInput;
+  }) {
+    const { skip = 0, take = 10, where, orderBy } = params || {};
+
+    const [data, total] = await Promise.all([
+      this.prisma.reclamo.findMany({
+        skip,
+        take,
+        where,
+        orderBy: orderBy || { createdAt: 'desc' },
+        include: {
+          profesional: {
+            select: {
+              nombre: true,
+              apellido: true,
+              email: true,
+              telefono: true,
+            },
+          },
+          tecnicoAsignado: {
+            select: {
+              nombre: true,
+              apellido: true,
+              email: true,
+              telefono: true,
+            },
+          },
+          _count: {
+            select: {
+              comentarios: true,
+              archivos: true,
+              auditorias: true,
+            },
+          },
+        },
+      }),
+      this.prisma.reclamo.count({ where }),
+    ]);
+
+    return {
+      data: data.map((r) => this.formatearReclamo(r)),
+      total,
+    };
+  }
+
+  async findByFilters(
+    usuarioId: string,
+    usuarioRol: Role,
+    filters?: {
+      estado?: EstadoReclamo;
+      prioridad?: PrioridadReclamo;
+      tipo?: string;
+      tipoServicio?: string;
+      search?: string;
+      fechaInicio?: Date;
+      fechaFin?: Date;
+      soloMis?: boolean;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    const {
+      estado,
+      prioridad,
+      tipo,
+      tipoServicio,
+      search,
+      fechaInicio,
+      fechaFin,
+      soloMis = false,
+      page = 1,
+      limit = 10,
+    } = filters || {};
+
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.ReclamoWhereInput = {
+      ...(estado && { estado }),
+      ...(prioridad && { prioridad }),
+      ...(tipo && { tipo }),
+      ...(tipoServicio && { tipoServicio }),
+      ...(search && {
+        OR: [
+          { codigo: { contains: search, mode: 'insensitive' } },
+          { titulo: { contains: search, mode: 'insensitive' } },
+          { descripcion: { contains: search, mode: 'insensitive' } },
+        ],
+      }),
+    };
+
+    // Filtrar por fechas
+    if (fechaInicio || fechaFin) {
+      where.createdAt = {};
+      if (fechaInicio) {
+        where.createdAt.gte = fechaInicio;
+      }
+      if (fechaFin) {
+        where.createdAt.lte = fechaFin;
+      }
+    }
+
+    // Filtrar según rol y preferencias del usuario
+    if (usuarioRol === Role.PROFESIONAL) {
+      where.profesionalId = usuarioId; // Solo ver sus propios reclamos
+    } else if (usuarioRol === Role.TECNICO) {
+      if (soloMis) {
+        where.tecnicoAsignadoId = usuarioId; // Solo reclamos asignados
+      }
+    }
+    // Admin y Supervisor ven todo por defecto
+
+    const { data, total } = await this.findAll({
+      skip,
+      take: limit,
+      where,
+    });
+
+    return {
+      data,
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+    };
+  }
+
+  async findOne(id: string, usuarioId: string, usuarioRol: Role) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+      include: {
+        profesional: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            email: true,
+            telefono: true,
+            direccion: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            id: true,
+            nombre: true,
+            apellido: true,
+            email: true,
+            telefono: true,
+          },
+        },
+        comentarios: {
+          where:
+            usuarioRol === Role.PROFESIONAL
+              ? { interno: false }
+              : undefined,
+          include: {
+            usuario: {
+              select: {
+                nombre: true,
+                apellido: true,
+                rol: true,
+              },
+            },
+          },
+          orderBy: {
+            createdAt: 'desc',
+          },
+          take: 10,
+        },
+        archivos: {
+          orderBy: {
+            createdAt: 'desc',
+          },
+        },
+        _count: {
+          select: {
+            comentarios: true,
+            archivos: true,
+            auditorias: true,
+          },
+        },
+      },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Verificar permisos
+    this.verificarPermisoAcceso(reclamo, usuarioId, usuarioRol);
+
+    return this.formatearReclamo(reclamo);
+  }
+
+  async update(
+    id: string,
+    updateReclamoDto: UpdateReclamoDto,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Verificar permisos
+    this.verificarPermisoModificacion(reclamo, usuarioId, usuarioRol);
+
+    // Guardar valores anteriores para auditoría
+    const valoresAnteriores: any = {};
+    const camposActualizados: string[] = [];
+
+    Object.keys(updateReclamoDto).forEach((key) => {
+      if (reclamo[key] !== undefined && reclamo[key] !== updateReclamoDto[key]) {
+        valoresAnteriores[key] = reclamo[key];
+        camposActualizados.push(key);
+      }
+    });
+
+    // Actualizar reclamo
+    const reclamoActualizado = await this.prisma.reclamo.update({
+      where: { id },
+      data: updateReclamoDto as any,
+      include: {
+        profesional: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Registrar actualización en auditoría
+    if (camposActualizados.length > 0) {
+      await this.auditoriaService.registrarActualizacion(
+        id,
+        usuarioId,
+        camposActualizados,
+        valoresAnteriores,
+        updateReclamoDto,
+      );
+    }
+
+    // Si cambió la prioridad, registrar específicamente
+    if (
+      updateReclamoDto.prioridad &&
+      updateReclamoDto.prioridad !== reclamo.prioridad
+    ) {
+      await this.auditoriaService.registrarCambioPrioridad(
+        id,
+        usuarioId,
+        reclamo.prioridad,
+        updateReclamoDto.prioridad,
+      );
+    }
+
+    this.logger.log(`Reclamo ${reclamo.codigo} actualizado por usuario ${usuarioId}`);
+
+    return this.formatearReclamo(reclamoActualizado);
+  }
+
+  async asignar(
+    id: string,
+    asignarReclamoDto: AsignarReclamoDto,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+      include: {
+        tecnicoAsignado: true,
+      },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Solo admin, supervisor y técnicos pueden asignar
+    if (
+      ![Role.ADMINISTRADOR, Role.SUPERVISOR, Role.TECNICO].includes(usuarioRol)
+    ) {
+      throw new ForbiddenException(
+        'No tienes permisos para asignar reclamos',
+      );
+    }
+
+    // Verificar que el técnico existe y es un técnico
+    const tecnico = await this.prisma.usuario.findUnique({
+      where: { id: asignarReclamoDto.tecnicoId },
+    });
+
+    if (!tecnico || tecnico.rol !== Role.TECNICO) {
+      throw new BadRequestException('Técnico no válido');
+    }
+
+    // Validar transición de estado
+    const nuevoEstado = EstadoReclamo.ASIGNADO;
+    this.workflowService.validateTransition(reclamo.estado, nuevoEstado);
+    this.workflowService.validateUserPermission(
+      reclamo.estado,
+      nuevoEstado,
+      usuarioRol,
+    );
+
+    const tecnicoAnterior = reclamo.tecnicoAsignado;
+
+    // Asignar técnico
+    const reclamoActualizado = await this.prisma.reclamo.update({
+      where: { id },
+      data: {
+        tecnicoAsignadoId: asignarReclamoDto.tecnicoId,
+        estado: nuevoEstado,
+        notasInternas: asignarReclamoDto.notas,
+      },
+      include: {
+        profesional: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Registrar en auditoría
+    if (tecnicoAnterior) {
+      // Reasignación
+      await this.auditoriaService.registrarReasignacion(
+        id,
+        usuarioId,
+        tecnicoAnterior.id,
+        `${tecnicoAnterior.nombre} ${tecnicoAnterior.apellido}`,
+        tecnico.id,
+        `${tecnico.nombre} ${tecnico.apellido}`,
+        asignarReclamoDto.notas,
+      );
+    } else {
+      // Asignación inicial
+      await this.auditoriaService.registrarAsignacion(
+        id,
+        usuarioId,
+        tecnico.id,
+        `${tecnico.nombre} ${tecnico.apellido}`,
+        asignarReclamoDto.notas,
+      );
+    }
+
+    await this.auditoriaService.registrarCambioEstado(
+      id,
+      usuarioId,
+      reclamo.estado,
+      nuevoEstado,
+    );
+
+    this.logger.log(
+      `Reclamo ${reclamo.codigo} asignado a técnico ${tecnico.email}`,
+    );
+
+    return this.formatearReclamo(reclamoActualizado);
+  }
+
+  async cambiarEstado(
+    id: string,
+    nuevoEstado: EstadoReclamo,
+    usuarioId: string,
+    usuarioRol: Role,
+    motivo?: string,
+  ) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Validar transición
+    this.workflowService.validateTransition(reclamo.estado, nuevoEstado);
+
+    // Verificar si es el técnico asignado
+    const esTecnicoAsignado = reclamo.tecnicoAsignadoId === usuarioId;
+
+    // Validar permisos
+    this.workflowService.validateUserPermission(
+      reclamo.estado,
+      nuevoEstado,
+      usuarioRol,
+      esTecnicoAsignado,
+    );
+
+    // Actualizar estado
+    const reclamoActualizado = await this.prisma.reclamo.update({
+      where: { id },
+      data: { estado: nuevoEstado },
+      include: {
+        profesional: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Registrar cambio de estado
+    await this.auditoriaService.registrarCambioEstado(
+      id,
+      usuarioId,
+      reclamo.estado,
+      nuevoEstado,
+      motivo,
+    );
+
+    this.logger.log(
+      `Estado del reclamo ${reclamo.codigo} cambiado de ${reclamo.estado} a ${nuevoEstado}`,
+    );
+
+    return this.formatearReclamo(reclamoActualizado);
+  }
+
+  async cerrar(
+    id: string,
+    cerrarReclamoDto: CerrarReclamoDto,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Solo supervisor y admin pueden cerrar
+    if (![Role.ADMINISTRADOR, Role.SUPERVISOR].includes(usuarioRol)) {
+      throw new ForbiddenException('No tienes permisos para cerrar reclamos');
+    }
+
+    // Validar transición
+    this.workflowService.validateTransition(
+      reclamo.estado,
+      EstadoReclamo.CERRADO,
+    );
+
+    // Cerrar reclamo
+    const reclamoActualizado = await this.prisma.reclamo.update({
+      where: { id },
+      data: {
+        estado: EstadoReclamo.CERRADO,
+        solucion: cerrarReclamoDto.solucion,
+        notasFinales: cerrarReclamoDto.notasFinales,
+        fechaCierre: new Date(),
+      },
+      include: {
+        profesional: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Registrar cierre
+    await this.auditoriaService.registrarCierre(
+      id,
+      usuarioId,
+      cerrarReclamoDto.solucion,
+      cerrarReclamoDto.notasFinales,
+    );
+
+    this.logger.log(`Reclamo ${reclamo.codigo} cerrado por usuario ${usuarioId}`);
+
+    return this.formatearReclamo(reclamoActualizado);
+  }
+
+  async rechazar(
+    id: string,
+    rechazarReclamoDto: RechazarReclamoDto,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    const reclamo = await this.prisma.reclamo.findUnique({
+      where: { id },
+    });
+
+    if (!reclamo) {
+      throw new NotFoundException('Reclamo no encontrado');
+    }
+
+    // Solo supervisor y admin pueden rechazar
+    if (![Role.ADMINISTRADOR, Role.SUPERVISOR].includes(usuarioRol)) {
+      throw new ForbiddenException(
+        'No tienes permisos para rechazar reclamos',
+      );
+    }
+
+    // Validar transición
+    this.workflowService.validateTransition(
+      reclamo.estado,
+      EstadoReclamo.RECHAZADO,
+    );
+
+    // Rechazar reclamo
+    const reclamoActualizado = await this.prisma.reclamo.update({
+      where: { id },
+      data: {
+        estado: EstadoReclamo.RECHAZADO,
+        motivoRechazo: rechazarReclamoDto.motivoRechazo,
+        fechaCierre: new Date(),
+      },
+      include: {
+        profesional: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+        tecnicoAsignado: {
+          select: {
+            nombre: true,
+            apellido: true,
+            email: true,
+          },
+        },
+      },
+    });
+
+    // Registrar rechazo
+    await this.auditoriaService.registrarRechazo(
+      id,
+      usuarioId,
+      rechazarReclamoDto.motivoRechazo,
+    );
+
+    this.logger.log(`Reclamo ${reclamo.codigo} rechazado por usuario ${usuarioId}`);
+
+    return this.formatearReclamo(reclamoActualizado);
+  }
+
+  async getStats(usuarioId?: string, usuarioRol?: Role) {
+    const where: Prisma.ReclamoWhereInput = {};
+
+    // Filtrar según rol
+    if (usuarioRol === Role.PROFESIONAL && usuarioId) {
+      where.profesionalId = usuarioId;
+    } else if (usuarioRol === Role.TECNICO && usuarioId) {
+      where.tecnicoAsignadoId = usuarioId;
+    }
+
+    const [
+      totalReclamos,
+      reclamosPorEstado,
+      reclamosPorPrioridad,
+      reclamosPorTipo,
+      reclamosVencidos,
+      promedioResolucion,
+    ] = await Promise.all([
+      this.prisma.reclamo.count({ where }),
+      this.prisma.reclamo.groupBy({
+        by: ['estado'],
+        where,
+        _count: true,
+      }),
+      this.prisma.reclamo.groupBy({
+        by: ['prioridad'],
+        where,
+        _count: true,
+      }),
+      this.prisma.reclamo.groupBy({
+        by: ['tipo'],
+        where,
+        _count: true,
+      }),
+      this.prisma.reclamo.count({
+        where: {
+          ...where,
+          fechaLimite: {
+            lt: new Date(),
+          },
+          estado: {
+            notIn: [EstadoReclamo.CERRADO, EstadoReclamo.RECHAZADO],
+          },
+        },
+      }),
+      this.prisma.reclamo.aggregate({
+        where: {
+          ...where,
+          estado: EstadoReclamo.CERRADO,
+          fechaCierre: { not: null },
+        },
+        _avg: {
+          // Calcular días promedio de resolución
+          // Nota: Esto es una aproximación, idealmente usarías una función SQL
+        },
+      }),
+    ]);
+
+    return {
+      totalReclamos,
+      reclamosPorEstado: reclamosPorEstado.reduce((acc, curr) => {
+        acc[curr.estado] = curr._count;
+        return acc;
+      }, {}),
+      reclamosPorPrioridad: reclamosPorPrioridad.reduce((acc, curr) => {
+        acc[curr.prioridad] = curr._count;
+        return acc;
+      }, {}),
+      reclamosPorTipo: reclamosPorTipo.reduce((acc, curr) => {
+        acc[curr.tipo] = curr._count;
+        return acc;
+      }, {}),
+      reclamosVencidos,
+    };
+  }
+
+  // Métodos auxiliares privados
+  private async generarCodigo(): Promise<string> {
+    const fecha = new Date();
+    const year = fecha.getFullYear().toString().slice(-2);
+    const month = (fecha.getMonth() + 1).toString().padStart(2, '0');
+
+    // Contar reclamos del mes actual
+    const count = await this.prisma.reclamo.count({
+      where: {
+        createdAt: {
+          gte: new Date(fecha.getFullYear(), fecha.getMonth(), 1),
+        },
+      },
+    });
+
+    const secuencial = (count + 1).toString().padStart(4, '0');
+
+    return `RCL-${year}${month}-${secuencial}`;
+  }
+
+  private calcularPrioridadAutomatica(tipo: string): PrioridadReclamo {
+    // Lógica para calcular prioridad basada en tipo
+    const prioridadesPorTipo = {
+      TECNICO: PrioridadReclamo.ALTA,
+      FACTURACION: PrioridadReclamo.MEDIA,
+      SERVICIO_CLIENTE: PrioridadReclamo.MEDIA,
+      INSTALACION: PrioridadReclamo.ALTA,
+      CONSULTA: PrioridadReclamo.BAJA,
+    };
+
+    return prioridadesPorTipo[tipo] || PrioridadReclamo.MEDIA;
+  }
+
+  private verificarPermisoAcceso(
+    reclamo: any,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    if (usuarioRol === Role.ADMINISTRADOR || usuarioRol === Role.SUPERVISOR) {
+      return; // Admin y supervisor pueden ver todo
+    }
+
+    if (
+      usuarioRol === Role.PROFESIONAL &&
+      reclamo.profesionalId !== usuarioId
+    ) {
+      throw new ForbiddenException('No tienes acceso a este reclamo');
+    }
+
+    if (
+      usuarioRol === Role.TECNICO &&
+      reclamo.tecnicoAsignadoId !== usuarioId
+    ) {
+      throw new ForbiddenException('No tienes acceso a este reclamo');
+    }
+  }
+
+  private verificarPermisoModificacion(
+    reclamo: any,
+    usuarioId: string,
+    usuarioRol: Role,
+  ) {
+    if (usuarioRol === Role.ADMINISTRADOR || usuarioRol === Role.SUPERVISOR) {
+      return; // Admin y supervisor pueden modificar todo
+    }
+
+    if (usuarioRol === Role.PROFESIONAL) {
+      // El profesional solo puede modificar si es su reclamo y está ABIERTO
+      if (reclamo.profesionalId !== usuarioId) {
+        throw new ForbiddenException('No tienes acceso a este reclamo');
+      }
+      if (reclamo.estado !== EstadoReclamo.ABIERTO) {
+        throw new ForbiddenException(
+          'Solo puedes modificar reclamos en estado ABIERTO',
+        );
+      }
+    }
+
+    if (usuarioRol === Role.TECNICO) {
+      // El técnico solo puede modificar si está asignado
+      if (reclamo.tecnicoAsignadoId !== usuarioId) {
+        throw new ForbiddenException('No estás asignado a este reclamo');
+      }
+    }
+  }
+
+  private formatearReclamo(reclamo: any) {
+    return {
+      ...reclamo,
+      profesional: reclamo.profesional
+        ? {
+            nombre: `${reclamo.profesional.nombre} ${reclamo.profesional.apellido}`,
+            email: reclamo.profesional.email,
+            telefono: reclamo.profesional.telefono,
+          }
+        : null,
+      tecnicoAsignado: reclamo.tecnicoAsignado
+        ? {
+            nombre: `${reclamo.tecnicoAsignado.nombre} ${reclamo.tecnicoAsignado.apellido}`,
+            email: reclamo.tecnicoAsignado.email,
+            telefono: reclamo.tecnicoAsignado.telefono,
+          }
+        : null,
+      estadoVencido: this.workflowService.isOverdue(reclamo.fechaLimite),
+      horasRestantes: this.workflowService.getTimeRemaining(reclamo.fechaLimite),
+    };
+  }
+}

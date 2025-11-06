@@ -4,6 +4,10 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import configuration from './config/configuration';
 import { PrismaModule } from './prisma/prisma.module';
 import { HealthModule } from './modules/health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { ReclamosModule } from './modules/reclamos/reclamos.module';
+import { NotificacionesModule } from './modules/notificaciones/notificaciones.module';
 
 /**
  * Módulo raíz de la aplicación
@@ -45,11 +49,11 @@ import { HealthModule } from './modules/health/health.module';
     // Health Checks
     HealthModule,
 
-    // TODO: Módulos de funcionalidad
-    // AuthModule,
-    // UsuariosModule,
-    // ReclamosModule,
-    // NotificacionesModule,
+    // Módulos de funcionalidad
+    AuthModule,
+    UsuariosModule,
+    ReclamosModule,
+    NotificacionesModule,
   ],
   controllers: [],
   providers: [],
