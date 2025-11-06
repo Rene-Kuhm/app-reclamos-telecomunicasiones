@@ -1,0 +1,384 @@
+// Prisma Schema para Sistema de Reclamos Telco
+// Database: PostgreSQL 15+ (Supabase)
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["fullTextSearch", "fullTextIndex"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum RolUsuario {
+  PROFESIONAL   // Crea reclamos
+  TECNICO       // Resuelve reclamos
+  SUPERVISOR    // Supervisa y gestiona
+  ADMINISTRADOR // Acceso total
+}
+
+enum EstadoReclamo {
+  ABIERTO      // Recién creado
+  ASIGNADO     // Asignado a técnico
+  EN_CURSO     // Técnico trabajando
+  EN_REVISION  // Esperando aprobación
+  CERRADO      // Completado exitosamente
+  RECHAZADO    // Rechazado o cancelado
+}
+
+enum PrioridadReclamo {
+  BAJA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+enum CategoriaReclamo {
+  INTERNET_ADSL      // Internet por ADSL
+  INTERNET_FIBRA     // Internet por Fibra Óptica
+  TELEFONO_ADSL      // Teléfono fijo ADSL
+  TELEFONO_FIBRA     // Teléfono fijo Fibra
+  TV_SENSA          // TV por cable Sensa
+}
+
+enum TipoNotificacion {
+  EMAIL
+  TELEGRAM
+  PUSH
+  SMS
+}
+
+enum EstadoNotificacion {
+  PENDIENTE
+  ENVIADA
+  FALLIDA
+  ENTREGADA
+  LEIDA
+}
+
+// ============================================
+// MODELOS PRINCIPALES
+// ============================================
+
+model Usuario {
+  id                    String    @id @default(uuid()) @db.Uuid
+  email                 String    @unique @db.VarChar(255)
+  password_hash         String    @db.VarChar(255)
+  nombre                String    @db.VarChar(100)
+  apellido              String    @db.VarChar(100)
+  telefono              String?   @db.VarChar(20)
+  avatar_url            String?   @db.Text
+
+  rol                   RolUsuario
+  activo                Boolean   @default(true)
+  email_verificado      Boolean   @default(false)
+
+  // MFA (Multi-Factor Authentication)
+  mfa_habilitado        Boolean   @default(false)
+  mfa_secret            String?   @db.VarChar(255)
+
+  // Notificaciones
+  telegram_chat_id      String?   @db.VarChar(100)
+  onesignal_player_id   String?   @db.VarChar(255)
+
+  // Preferencias de notificación (JSON)
+  // Ejemplo: { "email": true, "telegram": true, "push": false, "horario": "08:00-18:00" }
+  preferencias_notif    Json?     @db.JsonB
+
+  // Configuración regional
+  zona_horaria          String    @default("America/Argentina/Buenos_Aires") @db.VarChar(50)
+  idioma                String    @default("es") @db.VarChar(5)
+
+  // Seguridad
+  intentos_fallidos     Int       @default(0)
+  bloqueado_hasta       DateTime?
+  ultimo_login          DateTime?
+  ultimo_cambio_pass    DateTime?
+
+  // Relaciones
+  refresh_tokens        RefreshToken[]
+  reclamos_creados      Reclamo[] @relation("ReclamosProfesional")
+  reclamos_asignados    Reclamo[] @relation("ReclamosTecnico")
+  notificaciones        Notificacion[]
+  auditorias            AuditoriaReclamo[]
+  comentarios           Comentario[]
+  archivos_subidos      Archivo[] @relation("ArchivoSubidoPor")
+  sesiones              Sesion[]
+
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime? // Soft delete
+
+  @@index([email])
+  @@index([rol])
+  @@index([activo])
+  @@map("usuarios")
+}
+
+model RefreshToken {
+  id              String   @id @default(uuid()) @db.Uuid
+  token           String   @unique @db.VarChar(500)
+  usuario_id      String   @db.Uuid
+  usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  expires_at      DateTime
+  revocado        Boolean  @default(false)
+  revocado_at     DateTime?
+  ip_address      String?  @db.VarChar(45)
+  user_agent      String?  @db.Text
+
+  created_at      DateTime @default(now())
+
+  @@index([usuario_id])
+  @@index([token])
+  @@index([expires_at])
+  @@map("refresh_tokens")
+}
+
+model Sesion {
+  id              String   @id @default(uuid()) @db.Uuid
+  usuario_id      String   @db.Uuid
+  usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  token           String   @unique @db.VarChar(500)
+  ip_address      String   @db.VarChar(45)
+  user_agent      String   @db.Text
+  dispositivo     String?  @db.VarChar(100)
+  ubicacion       String?  @db.VarChar(255)
+
+  activa          Boolean  @default(true)
+  ultimo_acceso   DateTime @default(now())
+  expires_at      DateTime
+
+  created_at      DateTime @default(now())
+
+  @@index([usuario_id])
+  @@index([activa])
+  @@map("sesiones")
+}
+
+model Reclamo {
+  id                      String           @id @default(uuid()) @db.Uuid
+  numero_reclamo          String           @unique @db.VarChar(20) // RCL-2024-00001
+
+  titulo                  String           @db.VarChar(200)
+  descripcion             String           @db.Text
+
+  estado                  EstadoReclamo    @default(ABIERTO)
+  prioridad               PrioridadReclamo @default(MEDIA)
+
+  // Categorías específicas de telecomunicaciones
+  categoria               CategoriaReclamo
+  subcategoria            String?          @db.VarChar(100)
+
+  // Ubicación del problema
+  direccion               String?          @db.Text
+  latitud                 Decimal?         @db.Decimal(10, 8)
+  longitud                Decimal?         @db.Decimal(11, 8)
+
+  // Relaciones - Profesional que crea el reclamo
+  id_profesional          String           @db.Uuid
+  profesional             Usuario          @relation("ReclamosProfesional", fields: [id_profesional], references: [id])
+
+  // Técnico asignado (puede ser null si no está asignado aún)
+  id_tecnico_asignado     String?          @db.Uuid
+  tecnico_asignado        Usuario?         @relation("ReclamosTecnico", fields: [id_tecnico_asignado], references: [id])
+
+  // Fechas importantes del ciclo de vida
+  fecha_creacion          DateTime         @default(now())
+  fecha_asignacion        DateTime?
+  fecha_inicio_trabajo    DateTime?
+  fecha_resolucion        DateTime?
+  fecha_cierre            DateTime?
+
+  // SLA (Service Level Agreement)
+  sla_respuesta_horas     Int              @default(24)  // Tiempo para primera respuesta
+  sla_resolucion_horas    Int              @default(72)  // Tiempo para resolución
+  sla_vencimiento         DateTime?
+  sla_cumplido            Boolean?
+
+  // Resolución
+  notas_resolucion        String?          @db.Text
+  calificacion            Int?             // 1-5 estrellas
+  comentario_calificacion String?          @db.Text
+
+  // Metadata adicional (JSON flexible)
+  // Ejemplo: { "numero_cliente": "12345", "numero_linea": "351-1234567", "modem": "Huawei HG8245" }
+  metadata                Json?            @db.JsonB
+
+  // Relaciones
+  notificaciones          Notificacion[]
+  auditorias              AuditoriaReclamo[]
+  comentarios             Comentario[]
+  archivos                Archivo[]
+
+  created_at              DateTime         @default(now())
+  updated_at              DateTime         @updatedAt
+  deleted_at              DateTime?        // Soft delete
+
+  @@index([estado])
+  @@index([prioridad])
+  @@index([categoria])
+  @@index([id_profesional])
+  @@index([id_tecnico_asignado])
+  @@index([fecha_creacion])
+  @@index([sla_vencimiento])
+  @@index([numero_reclamo])
+  @@fulltext([titulo, descripcion])
+  @@map("reclamos")
+}
+
+model Comentario {
+  id              String   @id @default(uuid()) @db.Uuid
+  reclamo_id      String   @db.Uuid
+  reclamo         Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
+
+  usuario_id      String   @db.Uuid
+  usuario         Usuario  @relation(fields: [usuario_id], references: [id])
+
+  contenido       String   @db.Text
+  interno         Boolean  @default(false) // Si es interno (solo visible para técnicos/admins)
+
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([reclamo_id])
+  @@index([usuario_id])
+  @@index([created_at])
+  @@map("comentarios")
+}
+
+model Archivo {
+  id                String   @id @default(uuid()) @db.Uuid
+  reclamo_id        String   @db.Uuid
+  reclamo           Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
+
+  subido_por_id     String   @db.Uuid
+  subido_por        Usuario  @relation("ArchivoSubidoPor", fields: [subido_por_id], references: [id])
+
+  nombre_original   String   @db.VarChar(255)
+  nombre_almacenado String   @db.VarChar(255)
+  ruta              String   @db.Text
+  mime_type         String   @db.VarChar(100)
+  tamanio_bytes     BigInt
+
+  hash_sha256       String   @db.VarChar(64) // Para verificar integridad
+
+  // Metadata de imagen (si aplica)
+  ancho             Int?
+  alto              Int?
+
+  created_at        DateTime @default(now())
+
+  @@index([reclamo_id])
+  @@index([subido_por_id])
+  @@map("archivos")
+}
+
+model Notificacion {
+  id                String              @id @default(uuid()) @db.Uuid
+  usuario_id        String              @db.Uuid
+  usuario           Usuario             @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
+
+  reclamo_id        String?             @db.Uuid
+  reclamo           Reclamo?            @relation(fields: [reclamo_id], references: [id], onDelete: SetNull)
+
+  tipo              TipoNotificacion
+  estado            EstadoNotificacion  @default(PENDIENTE)
+
+  titulo            String              @db.VarChar(200)
+  mensaje           String              @db.Text
+
+  // Datos específicos por canal (JSON)
+  // Telegram: { "message_id": 123, "chat_id": 456 }
+  // Email: { "message_id": "abc@gmail.com", "subject": "..." }
+  datos_envio       Json?               @db.JsonB
+
+  // Tracking
+  intentos_envio    Int                 @default(0)
+  enviada_at        DateTime?
+  entregada_at      DateTime?
+  leida_at          DateTime?
+  error_mensaje     String?             @db.Text
+
+  // Metadata
+  metadata          Json?               @db.JsonB
+
+  created_at        DateTime            @default(now())
+
+  @@index([usuario_id])
+  @@index([reclamo_id])
+  @@index([tipo])
+  @@index([estado])
+  @@index([created_at])
+  @@map("notificaciones")
+}
+
+model AuditoriaReclamo {
+  id                String   @id @default(uuid()) @db.Uuid
+  reclamo_id        String   @db.Uuid
+  reclamo           Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
+
+  usuario_id        String   @db.Uuid
+  usuario           Usuario  @relation(fields: [usuario_id], references: [id])
+
+  accion            String   @db.VarChar(100) // 'CREADO', 'ASIGNADO', 'ESTADO_CAMBIADO', etc.
+
+  estado_anterior   String?  @db.VarChar(50)
+  estado_nuevo      String?  @db.VarChar(50)
+
+  // Campos cambiados (JSON)
+  // Ejemplo: { "prioridad": { "antes": "MEDIA", "despues": "ALTA" } }
+  campos_cambiados  Json?    @db.JsonB
+  notas             String?  @db.Text
+
+  ip_address        String?  @db.VarChar(45)
+  user_agent        String?  @db.Text
+
+  created_at        DateTime @default(now())
+
+  @@index([reclamo_id])
+  @@index([usuario_id])
+  @@index([created_at])
+  @@map("auditorias_reclamo")
+}
+
+// ============================================
+// CONFIGURACIÓN DEL SISTEMA
+// ============================================
+
+model Configuracion {
+  clave             String   @id @db.VarChar(100)
+  valor             Json     @db.JsonB
+  descripcion       String?  @db.Text
+  tipo              String   @db.VarChar(50) // 'string', 'number', 'boolean', 'json'
+
+  updated_at        DateTime @updatedAt
+
+  @@map("configuraciones")
+}
+
+model PlantillaNotificacion {
+  id                String            @id @default(uuid()) @db.Uuid
+  codigo            String            @unique @db.VarChar(100)
+  nombre            String            @db.VarChar(200)
+  tipo              TipoNotificacion
+
+  asunto            String?           @db.VarChar(200) // Para emails
+  contenido         String            @db.Text
+
+  // Variables disponibles: {{nombre_usuario}}, {{numero_reclamo}}, etc.
+  variables         Json              @db.JsonB
+
+  activa            Boolean           @default(true)
+
+  created_at        DateTime          @default(now())
+  updated_at        DateTime          @updatedAt
+
+  @@map("plantillas_notificacion")
+}

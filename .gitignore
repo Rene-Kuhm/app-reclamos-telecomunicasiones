@@ -1,0 +1,144 @@
+# ============================================
+# Node.js Backend
+# ============================================
+backend/node_modules/
+backend/dist/
+backend/build/
+backend/logs/
+backend/*.log
+backend/npm-debug.log*
+backend/yarn-debug.log*
+backend/yarn-error.log*
+backend/lerna-debug.log*
+backend/.pnpm-debug.log*
+
+# Environment variables
+backend/.env
+backend/.env.local
+backend/.env.*.local
+
+# Testing
+backend/coverage/
+backend/.nyc_output/
+
+# IDE
+backend/.idea/
+backend/.vscode/
+backend/*.swp
+backend/*.swo
+backend/*~
+backend/.DS_Store
+
+# Prisma
+backend/prisma/migrations/**/*.sql
+!backend/prisma/migrations/migration_lock.toml
+
+# ============================================
+# Flutter App
+# ============================================
+app-movil/.dart_tool/
+app-movil/.flutter-plugins
+app-movil/.flutter-plugins-dependencies
+app-movil/.packages
+app-movil/.pub-cache/
+app-movil/.pub/
+app-movil/build/
+app-movil/flutter_*.png
+app-movil/linked_*.ds
+app-movil/unlinked.ds
+app-movil/unlinked_spec.ds
+
+# IntelliJ
+app-movil/.idea/
+app-movil/*.iml
+app-movil/*.ipr
+app-movil/*.iws
+
+# Android
+app-movil/android/app/debug
+app-movil/android/app/profile
+app-movil/android/app/release
+app-movil/android/.gradle/
+app-movil/android/captures/
+app-movil/android/gradlew
+app-movil/android/gradlew.bat
+app-movil/android/local.properties
+app-movil/android/**/GeneratedPluginRegistrant.java
+app-movil/android/key.properties
+app-movil/android/**/*.keystore
+app-movil/android/**/*.jks
+
+# iOS
+app-movil/ios/**/*.mode1v3
+app-movil/ios/**/*.mode2v3
+app-movil/ios/**/*.moved-aside
+app-movil/ios/**/*.pbxuser
+app-movil/ios/**/*.perspectivev3
+app-movil/ios/**/*sync/
+app-movil/ios/**/.sconsign.dblite
+app-movil/ios/**/.tags*
+app-movil/ios/**/.vagrant/
+app-movil/ios/**/DerivedData/
+app-movil/ios/**/Icon?
+app-movil/ios/**/Pods/
+app-movil/ios/**/.symlinks/
+app-movil/ios/**/profile
+app-movil/ios/**/xcuserdata
+app-movil/ios/.generated/
+app-movil/ios/Flutter/App.framework
+app-movil/ios/Flutter/Flutter.framework
+app-movil/ios/Flutter/Flutter.podspec
+app-movil/ios/Flutter/Generated.xcconfig
+app-movil/ios/Flutter/ephemeral/
+app-movil/ios/Flutter/app.flx
+app-movil/ios/Flutter/app.zip
+app-movil/ios/Flutter/flutter_assets/
+app-movil/ios/Flutter/flutter_export_environment.sh
+app-movil/ios/ServiceDefinitions.json
+app-movil/ios/Runner/GeneratedPluginRegistrant.*
+
+# Web
+app-movil/web/
+app-movil/.firebase/
+
+# Coverage
+app-movil/coverage/
+
+# Environment
+app-movil/.env
+app-movil/.env.local
+app-movil/.env.*.local
+
+# ============================================
+# Documentation
+# ============================================
+docs/.vscode/
+
+# ============================================
+# Infrastructure
+# ============================================
+infrastructure/.terraform/
+infrastructure/*.tfstate
+infrastructure/*.tfstate.backup
+infrastructure/.terraformrc
+infrastructure/terraform.rc
+
+# ============================================
+# General
+# ============================================
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.temp
+.vscode/
+.idea/
+
+# Secrets
+**/*.pem
+**/*.key
+**/*.p12
+**/*.jks
+**/*.keystore
+**/secrets.json
+**/credentials.json
