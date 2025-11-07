@@ -13,19 +13,39 @@ class EstadoChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = _getEstadoConfig(estado);
 
-    return Chip(
-      label: Text(
-        config.label,
-        style: TextStyle(
-          color: config.textColor,
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: config.backgroundColor,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: config.textColor.withOpacity(0.2),
+          width: 1,
         ),
       ),
-      backgroundColor: config.backgroundColor,
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 0),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-      visualDensity: VisualDensity.compact,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: config.textColor,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            config.label,
+            style: TextStyle(
+              color: config.textColor,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

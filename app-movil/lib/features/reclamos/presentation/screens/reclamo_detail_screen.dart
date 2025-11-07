@@ -1,12 +1,20 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/utils/date_formatter.dart';
+import '../../../../core/config/app_config.dart';
 import '../providers/reclamo_detail_provider.dart';
 import '../widgets/estado_chip.dart';
 import '../widgets/prioridad_indicator.dart';
 import '../widgets/comentario_item.dart';
 import '../widgets/archivo_item.dart';
+import '../widgets/change_estado_dialog.dart';
+import '../../data/models/archivo_model.dart';
 
 /// Reclamo detail screen
 class ReclamoDetailScreen extends ConsumerStatefulWidget {
@@ -76,6 +84,142 @@ class _ReclamoDetailScreenState extends ConsumerState<ReclamoDetailScreen>
     }
   }
 
+  Future<void> _viewArchivo(Archivo archivo) async {
+    final url = '${AppConfig.baseUrl}/archivos/${archivo.id}';
+
+    // Si es imagen, mostrar en dialog
+    if (archivo.tipoArchivo.startsWith('image/')) {
+      showDialog(
+        context: context,
+        builder: (context) => Dialog(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBar(
+                title: Text(archivo.nombreArchivo),
+                automaticallyImplyLeading: false,
+                actions: [
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              Expanded(
+                child: InteractiveViewer(
+                  child: CachedNetworkImage(
+                    imageUrl: url,
+                    placeholder: (context, url) =>
+                        const Center(child: CircularProgressIndicator()),
+                    errorWidget: (context, url, error) =>
+                        const Icon(Icons.error),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      // Para otros archivos, abrir en navegador
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No se puede abrir el archivo'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  Future<void> _uploadArchivo() async {
+    // Mostrar opciones
+    final source = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Subir archivo'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Desde galería'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Tomar foto'),
+              onTap: () => Navigator.pop(context, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.attach_file),
+              title: const Text('Archivo'),
+              onTap: () => Navigator.pop(context, 'file'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return;
+
+    File? file;
+    String? fileName;
+
+    if (source == 'camera') {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.camera);
+      if (photo == null) return;
+      file = File(photo.path);
+      fileName = photo.name;
+    } else if (source == 'gallery') {
+      final picker = ImagePicker();
+      final photo = await picker.pickImage(source: ImageSource.gallery);
+      if (photo == null) return;
+      file = File(photo.path);
+      fileName = photo.name;
+    } else {
+      final result = await FilePicker.platform.pickFiles();
+      if (result == null) return;
+      file = File(result.files.single.path!);
+      fileName = result.files.single.name;
+    }
+
+    if (!mounted) return;
+
+    // Mostrar progress
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+
+    final success = await ref
+        .read(reclamoDetailProvider(widget.reclamoId).notifier)
+        .uploadArchivo(file.path, fileName);
+
+    if (mounted) {
+      Navigator.pop(context); // Cerrar progress
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success
+              ? 'Archivo subido correctamente'
+              : 'Error al subir archivo'),
+          backgroundColor: success ? Colors.green : Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reclamoDetailProvider(widget.reclamoId));
@@ -84,6 +228,24 @@ class _ReclamoDetailScreenState extends ConsumerState<ReclamoDetailScreen>
       appBar: AppBar(
         title: const Text('Detalle del Reclamo'),
         actions: [
+          if (state.reclamo != null && !state.reclamo!.isClosed)
+            IconButton(
+              icon: const Icon(Icons.published_with_changes),
+              onPressed: () async {
+                final result = await showDialog<bool>(
+                  context: context,
+                  builder: (context) => ChangeEstadoDialog(
+                    reclamoId: widget.reclamoId,
+                    currentEstado: state.reclamo!.estado,
+                  ),
+                );
+
+                if (result == true) {
+                  // Refrescar detalle
+                  ref.invalidate(reclamoDetailProvider(widget.reclamoId));
+                }
+              },
+            ),
           if (state.reclamo != null && !state.reclamo!.isClosed)
             IconButton(
               icon: const Icon(Icons.edit),
@@ -100,36 +262,58 @@ class _ReclamoDetailScreenState extends ConsumerState<ReclamoDetailScreen>
           : state.error != null && state.reclamo == null
               ? _buildErrorView(state.error!)
               : _buildContent(state),
+      floatingActionButton: state.reclamo != null && !state.reclamo!.isClosed
+          ? FloatingActionButton(
+              onPressed: _uploadArchivo,
+              child: const Icon(Icons.upload_file),
+            )
+          : null,
     );
   }
 
   Widget _buildErrorView(String error) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.error_outline,
-            size: 64,
-            color: Theme.of(context).colorScheme.error,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Error al cargar reclamo',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            error,
-            style: Theme.of(context).textTheme.bodyMedium,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: _handleRefresh,
-            child: const Text('Reintentar'),
-          ),
-        ],
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.error.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline,
+                size: 64,
+                color: Theme.of(context).colorScheme.error,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Error al cargar reclamo',
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              error,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            FilledButton.icon(
+              onPressed: _handleRefresh,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -325,9 +509,7 @@ class _ReclamoDetailScreenState extends ConsumerState<ReclamoDetailScreen>
                   final archivo = state.archivos[index];
                   return ArchivoItem(
                     archivo: archivo,
-                    onTap: () {
-                      // Open archivo
-                    },
+                    onTap: () => _viewArchivo(archivo),
                     onDelete: () async {
                       final confirmed = await _showDeleteDialog(context);
                       if (confirmed == true) {

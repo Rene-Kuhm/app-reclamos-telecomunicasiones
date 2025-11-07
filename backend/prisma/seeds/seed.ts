@@ -6,34 +6,33 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Iniciando seed de base de datos...');
 
-  // Limpiar datos existentes (opcional - comentar si no deseas limpiar)
+  // Limpiar datos existentes
   console.log('🗑️  Limpiando datos existentes...');
-  await prisma.auditoria.deleteMany();
+  await prisma.auditoriaReclamo.deleteMany();
   await prisma.archivo.deleteMany();
   await prisma.comentario.deleteMany();
   await prisma.notificacion.deleteMany();
-  await prisma.preferenciaNotificacion.deleteMany();
   await prisma.reclamo.deleteMany();
+  await prisma.refreshToken.deleteMany();
+  await prisma.sesion.deleteMany();
   await prisma.usuario.deleteMany();
 
   // 1. CREAR USUARIOS
   console.log('👤 Creando usuarios...');
 
-  const hashedPassword = await bcrypt.hash('Password123!', 12);
+  const hashedPassword = await bcrypt.hash('Password123!', 10);
 
   // 1 Admin
   const admin = await prisma.usuario.create({
     data: {
       email: 'admin@reclamos.com',
-      password: hashedPassword,
+      password_hash: hashedPassword,
       nombre: 'Administrador',
       apellido: 'Sistema',
-      telefono: '+595981000001',
-      dni: '1000001',
-      direccion: 'Oficina Central',
+      telefono: '1234567890',
       rol: 'ADMINISTRADOR',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Admin creado: ${admin.email}`);
@@ -42,15 +41,13 @@ async function main() {
   const supervisor = await prisma.usuario.create({
     data: {
       email: 'supervisor@reclamos.com',
-      password: hashedPassword,
+      password_hash: hashedPassword,
       nombre: 'María',
       apellido: 'González',
-      telefono: '+595981000002',
-      dni: '2000001',
-      direccion: 'Av. España 123',
+      telefono: '1234567891',
       rol: 'SUPERVISOR',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Supervisor creado: ${supervisor.email}`);
@@ -59,15 +56,13 @@ async function main() {
   const tecnico1 = await prisma.usuario.create({
     data: {
       email: 'tecnico1@reclamos.com',
-      password: hashedPassword,
+      password_hash: hashedPassword,
       nombre: 'Juan',
       apellido: 'Pérez',
-      telefono: '+595981000003',
-      dni: '3000001',
-      direccion: 'Barrio San Vicente',
+      telefono: '1234567892',
       rol: 'TECNICO',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Técnico 1 creado: ${tecnico1.email}`);
@@ -75,64 +70,56 @@ async function main() {
   const tecnico2 = await prisma.usuario.create({
     data: {
       email: 'tecnico2@reclamos.com',
-      password: hashedPassword,
+      password_hash: hashedPassword,
       nombre: 'Carlos',
-      apellido: 'Martínez',
-      telefono: '+595981000004',
-      dni: '3000002',
-      direccion: 'Barrio Trinidad',
+      apellido: 'Ramírez',
+      telefono: '1234567893',
       rol: 'TECNICO',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Técnico 2 creado: ${tecnico2.email}`);
 
-  // 3 Profesionales (clientes)
+  // 3 Profesionales
   const profesional1 = await prisma.usuario.create({
     data: {
-      email: 'cliente1@example.com',
-      password: hashedPassword,
+      email: 'profesional1@reclamos.com',
+      password_hash: hashedPassword,
       nombre: 'Ana',
-      apellido: 'López',
-      telefono: '+595981000005',
-      dni: '4000001',
-      direccion: 'Av. Mariscal López 456',
+      apellido: 'Martínez',
+      telefono: '1234567894',
       rol: 'PROFESIONAL',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Profesional 1 creado: ${profesional1.email}`);
 
   const profesional2 = await prisma.usuario.create({
     data: {
-      email: 'cliente2@example.com',
-      password: hashedPassword,
+      email: 'profesional2@reclamos.com',
+      password_hash: hashedPassword,
       nombre: 'Luis',
-      apellido: 'Ramírez',
-      telefono: '+595981000006',
-      dni: '4000002',
-      direccion: 'Av. Eusebio Ayala 789',
+      apellido: 'Fernández',
+      telefono: '1234567895',
       rol: 'PROFESIONAL',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Profesional 2 creado: ${profesional2.email}`);
 
   const profesional3 = await prisma.usuario.create({
     data: {
-      email: 'cliente3@example.com',
-      password: hashedPassword,
-      nombre: 'Patricia',
-      apellido: 'Benítez',
-      telefono: '+595981000007',
-      dni: '4000003',
-      direccion: 'Fernando de la Mora',
+      email: 'profesional3@reclamos.com',
+      password_hash: hashedPassword,
+      nombre: 'Laura',
+      apellido: 'Sánchez',
+      telefono: '1234567896',
       rol: 'PROFESIONAL',
-      estado: 'ACTIVO',
-      notificacionesEnabled: true,
+      activo: true,
+      email_verificado: true,
     },
   });
   console.log(`✅ Profesional 3 creado: ${profesional3.email}`);
@@ -140,390 +127,266 @@ async function main() {
   // 2. CREAR RECLAMOS
   console.log('📋 Creando reclamos...');
 
-  // Reclamo 1: ABIERTO (sin asignar)
+  // Reclamo 1: Internet sin servicio (ABIERTO)
   const reclamo1 = await prisma.reclamo.create({
     data: {
-      codigo: 'RCL-2501-0001',
-      titulo: 'Internet sin conexión desde hace 2 días',
-      descripcion:
-        'No tengo acceso a internet desde el lunes. El modem parpadea la luz roja. Ya reinicié el equipo varias veces sin éxito.',
-      tipo: 'TECNICO',
-      tipoServicio: 'INTERNET_FIBRA',
-      prioridad: 'ALTA',
+      numero_reclamo: 'RCL-2024-00001',
+      titulo: 'Sin servicio de internet desde ayer',
+      descripcion: 'El servicio de internet está completamente caído desde ayer por la tarde. No hay luces en el módem.',
       estado: 'ABIERTO',
-      direccion: 'Av. Mariscal López 456, Asunción',
-      latitud: -25.2637,
-      longitud: -57.5759,
-      infoContacto: {
-        telefonoAlternativo: '+595981000099',
-        horariosDisponibles: 'Lunes a Viernes 8-17hs',
-      },
-      fechaLimite: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
-      profesionalId: profesional1.id,
+      prioridad: 'ALTA',
+      categoria: 'INTERNET_FIBRA',
+      direccion: 'Av. Principal 123, Ciudad',
+      id_profesional: profesional1.id,
+      fecha_creacion: new Date(),
     },
   });
-  console.log(`✅ Reclamo creado: ${reclamo1.codigo} - ${reclamo1.estado}`);
+  console.log(`✅ Reclamo 1 creado: ${reclamo1.numero_reclamo}`);
 
-  // Auditoría de creación
-  await prisma.auditoria.create({
+  // Crear auditoría para reclamo 1
+  await prisma.auditoriaReclamo.create({
     data: {
-      reclamoId: reclamo1.id,
-      usuarioId: profesional1.id,
-      tipo: 'CREACION',
-      descripcion: 'Reclamo creado',
-      detalles: {
-        codigo: reclamo1.codigo,
-        tipo: reclamo1.tipo,
-        prioridad: reclamo1.prioridad,
-      },
+      reclamo_id: reclamo1.id,
+      usuario_id: profesional1.id,
+      accion: 'CREADO',
+      estado_nuevo: 'ABIERTO',
+      campos_cambiados: JSON.stringify({ accion: 'Reclamo creado' }),
     },
   });
 
-  // Reclamo 2: ASIGNADO
+  // Reclamo 2: Velocidad lenta (ASIGNADO a Técnico 1)
   const reclamo2 = await prisma.reclamo.create({
     data: {
-      codigo: 'RCL-2501-0002',
-      titulo: 'Baja velocidad de internet',
-      descripcion:
-        'Contraté el plan de 100 Mbps pero solo llegan 20 Mbps. Ya hice pruebas con varios dispositivos y el resultado es el mismo.',
-      tipo: 'TECNICO',
-      tipoServicio: 'INTERNET_ADSL',
-      prioridad: 'MEDIA',
+      numero_reclamo: 'RCL-2024-00002',
+      titulo: 'Velocidad de internet muy lenta',
+      descripcion: 'La velocidad de descarga es de 5 Mbps cuando debería ser de 100 Mbps según el plan contratado.',
       estado: 'ASIGNADO',
-      direccion: 'Av. Eusebio Ayala 789, Asunción',
-      latitud: -25.2817,
-      longitud: -57.6366,
-      fechaLimite: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 horas
-      profesionalId: profesional2.id,
-      tecnicoAsignadoId: tecnico1.id,
-      notasInternas: 'Revisar configuración del modem y velocidad en el nodo',
+      prioridad: 'MEDIA',
+      categoria: 'INTERNET_FIBRA',
+      direccion: 'Calle Secundaria 456, Ciudad',
+      id_profesional: profesional2.id,
+      id_tecnico_asignado: tecnico1.id,
+      fecha_creacion: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
+      fecha_asignacion: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Hace 1 día
     },
   });
-  console.log(`✅ Reclamo creado: ${reclamo2.codigo} - ${reclamo2.estado}`);
+  console.log(`✅ Reclamo 2 creado: ${reclamo2.numero_reclamo}`);
 
-  await prisma.auditoria.createMany({
-    data: [
-      {
-        reclamoId: reclamo2.id,
-        usuarioId: profesional2.id,
-        tipo: 'CREACION',
-        descripcion: 'Reclamo creado',
-      },
-      {
-        reclamoId: reclamo2.id,
-        usuarioId: supervisor.id,
-        tipo: 'ASIGNACION',
-        descripcion: `Reclamo asignado a ${tecnico1.nombre} ${tecnico1.apellido}`,
-        detalles: {
-          tecnicoId: tecnico1.id,
-          tecnicoNombre: `${tecnico1.nombre} ${tecnico1.apellido}`,
-        },
-      },
-    ],
+  // Crear auditorías para reclamo 2
+  await prisma.auditoriaReclamo.create({
+    data: {
+      reclamo_id: reclamo2.id,
+      usuario_id: profesional2.id,
+      accion: 'CREADO',
+      estado_nuevo: 'ABIERTO',
+    },
+  });
+
+  await prisma.auditoriaReclamo.create({
+    data: {
+      reclamo_id: reclamo2.id,
+      usuario_id: supervisor.id,
+      accion: 'ASIGNADO',
+      estado_anterior: 'ABIERTO',
+      estado_nuevo: 'ASIGNADO',
+      campos_cambiados: JSON.stringify({ tecnico: tecnico1.email }),
+    },
   });
 
   // Comentario en reclamo 2
   await prisma.comentario.create({
     data: {
-      reclamoId: reclamo2.id,
-      usuarioId: tecnico1.id,
-      contenido:
-        'He revisado el caso. Voy a programar una visita para mañana a las 10:00 AM.',
-      interno: false,
+      reclamo_id: reclamo2.id,
+      usuario_id: tecnico1.id,
+      contenido: 'He revisado el caso. Voy a realizar pruebas de velocidad en el sitio mañana.',
     },
   });
 
-  // Reclamo 3: EN_CURSO
+  // Reclamo 3: Telefono con ruido (EN_CURSO, Técnico 2)
   const reclamo3 = await prisma.reclamo.create({
     data: {
-      codigo: 'RCL-2501-0003',
-      titulo: 'Problema con TV Sensa - canales con interferencia',
-      descripcion:
-        'Los canales HD se ven con interferencia y se cortan constantemente. Los canales SD funcionan normalmente.',
-      tipo: 'TECNICO',
-      tipoServicio: 'TV_SENSA',
-      prioridad: 'MEDIA',
+      numero_reclamo: 'RCL-2024-00003',
+      titulo: 'Línea telefónica con interferencia',
+      descripcion: 'Se escucha mucho ruido y cortes en las llamadas telefónicas.',
       estado: 'EN_CURSO',
-      direccion: 'Fernando de la Mora, Zona Norte',
-      latitud: -25.3374,
-      longitud: -57.5447,
-      fechaLimite: new Date(Date.now() + 48 * 60 * 60 * 1000), // 48 horas
-      profesionalId: profesional3.id,
-      tecnicoAsignadoId: tecnico2.id,
+      prioridad: 'MEDIA',
+      categoria: 'TELEFONO_FIBRA',
+      direccion: 'Barrio Norte 789, Ciudad',
+      id_profesional: profesional3.id,
+      id_tecnico_asignado: tecnico2.id,
+      fecha_creacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000), // Hace 3 días
+      fecha_asignacion: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Hace 2 días
+      fecha_inicio_trabajo: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), // Hace 1 día
     },
   });
-  console.log(`✅ Reclamo creado: ${reclamo3.codigo} - ${reclamo3.estado}`);
+  console.log(`✅ Reclamo 3 creado: ${reclamo3.numero_reclamo}`);
 
-  await prisma.auditoria.createMany({
-    data: [
-      {
-        reclamoId: reclamo3.id,
-        usuarioId: profesional3.id,
-        tipo: 'CREACION',
-        descripcion: 'Reclamo creado',
-      },
-      {
-        reclamoId: reclamo3.id,
-        usuarioId: supervisor.id,
-        tipo: 'ASIGNACION',
-        descripcion: `Reclamo asignado a ${tecnico2.nombre} ${tecnico2.apellido}`,
-      },
-      {
-        reclamoId: reclamo3.id,
-        usuarioId: tecnico2.id,
-        tipo: 'CAMBIO_ESTADO',
-        descripcion: 'Estado cambiado de ASIGNADO a EN_CURSO',
-        detalles: {
-          estadoAnterior: 'ASIGNADO',
-          estadoNuevo: 'EN_CURSO',
-        },
-      },
-    ],
+  await prisma.auditoriaReclamo.create({
+    data: {
+      reclamo_id: reclamo3.id,
+      usuario_id: profesional3.id,
+      accion: 'CREADO',
+      estado_nuevo: 'ABIERTO',
+    },
   });
 
-  await prisma.comentario.createMany({
-    data: [
-      {
-        reclamoId: reclamo3.id,
-        usuarioId: tecnico2.id,
-        contenido:
-          'Estoy en camino al domicilio. Llego en 15 minutos aproximadamente.',
-        interno: false,
-      },
-      {
-        reclamoId: reclamo3.id,
-        usuarioId: tecnico2.id,
-        contenido:
-          'Detectado problema en el splitter. Procediendo con el reemplazo.',
-        interno: true,
-      },
-    ],
+  await prisma.auditoriaReclamo.create({
+    data: {
+      reclamo_id: reclamo3.id,
+      usuario_id: tecnico2.id,
+      accion: 'INICIADO',
+      estado_anterior: 'ASIGNADO',
+      estado_nuevo: 'EN_CURSO',
+    },
   });
 
-  // Reclamo 4: EN_REVISION
+  // Comentarios en reclamo 3
+  await prisma.comentario.create({
+    data: {
+      reclamo_id: reclamo3.id,
+      usuario_id: tecnico2.id,
+      contenido: 'Revisé la línea telefónica. Encontré conexión suelta en el splitter.',
+    },
+  });
+
+  await prisma.comentario.create({
+    data: {
+      reclamo_id: reclamo3.id,
+      usuario_id: profesional3.id,
+      contenido: '¿Cuándo estará solucionado?',
+    },
+  });
+
+  await prisma.comentario.create({
+    data: {
+      reclamo_id: reclamo3.id,
+      usuario_id: tecnico2.id,
+      contenido: 'Estoy reemplazando el splitter. Debería estar listo en 1 hora.',
+    },
+  });
+
+  // Reclamo 4: TV sin señal (CERRADO)
   const reclamo4 = await prisma.reclamo.create({
     data: {
-      codigo: 'RCL-2501-0004',
-      titulo: 'Consulta sobre facturación - cobro duplicado',
-      descripcion:
-        'Me llegaron dos facturas por el mismo mes. Una de $450.000 y otra de $480.000. Necesito aclaración urgente.',
-      tipo: 'FACTURACION',
-      tipoServicio: 'INTERNET_FIBRA',
-      prioridad: 'ALTA',
-      estado: 'EN_REVISION',
-      direccion: 'Luque, Barrio San Antonio',
-      fechaLimite: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 horas
-      profesionalId: profesional1.id,
-      tecnicoAsignadoId: supervisor.id, // El supervisor gestiona facturación
-      notasInternas:
-        'Revisar sistema de facturación. Posible error en el sistema.',
+      numero_reclamo: 'RCL-2024-00004',
+      titulo: 'Canales de TV sin señal',
+      descripcion: 'Varios canales no tienen señal. Solo se ve pantalla negra.',
+      estado: 'CERRADO',
+      prioridad: 'BAJA',
+      categoria: 'TV_SENSA',
+      direccion: 'Av. Libertad 321, Ciudad',
+      id_profesional: profesional1.id,
+      id_tecnico_asignado: tecnico1.id,
+      fecha_creacion: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Hace 7 días
+      fecha_asignacion: new Date(Date.now() - 6 * 24 * 60 * 60 * 1000),
+      fecha_inicio_trabajo: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+      fecha_resolucion: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      fecha_cierre: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      notas_resolucion: 'Se reconfiguraron los canales en el decodificador. Problema resuelto.',
+      calificacion: 5,
+      comentario_calificacion: 'Excelente servicio. Muy rápido.',
     },
   });
-  console.log(`✅ Reclamo creado: ${reclamo4.codigo} - ${reclamo4.estado}`);
+  console.log(`✅ Reclamo 4 creado: ${reclamo4.numero_reclamo}`);
 
-  await prisma.auditoria.createMany({
-    data: [
-      {
-        reclamoId: reclamo4.id,
-        usuarioId: profesional1.id,
-        tipo: 'CREACION',
-        descripcion: 'Reclamo creado',
-      },
-      {
-        reclamoId: reclamo4.id,
-        usuarioId: admin.id,
-        tipo: 'ASIGNACION',
-        descripcion: `Reclamo asignado a ${supervisor.nombre} ${supervisor.apellido}`,
-      },
-      {
-        reclamoId: reclamo4.id,
-        usuarioId: supervisor.id,
-        tipo: 'CAMBIO_ESTADO',
-        descripcion: 'Estado cambiado de EN_CURSO a EN_REVISION',
-      },
-    ],
-  });
-
-  // Reclamo 5: CERRADO
+  // Reclamo 5: ADSL intermitente (EN_REVISION)
   const reclamo5 = await prisma.reclamo.create({
     data: {
-      codigo: 'RCL-2501-0005',
-      titulo: 'Solicitud de instalación de nuevo servicio',
-      descripcion:
-        'Quiero contratar el servicio de internet fibra 200 Mbps para mi nuevo domicilio.',
-      tipo: 'INSTALACION',
-      tipoServicio: 'INTERNET_FIBRA',
-      prioridad: 'BAJA',
-      estado: 'CERRADO',
-      direccion: 'San Lorenzo, Barrio Virgen del Rosario',
-      fechaLimite: new Date(Date.now() - 24 * 60 * 60 * 1000), // Ya pasó
-      fechaCierre: new Date(),
-      profesionalId: profesional2.id,
-      tecnicoAsignadoId: tecnico1.id,
-      solucion:
-        'Instalación completada exitosamente. Servicio activado y funcionando correctamente.',
-      notasFinales: 'Cliente satisfecho con el servicio',
+      numero_reclamo: 'RCL-2024-00005',
+      titulo: 'Conexión ADSL intermitente',
+      descripcion: 'La conexión se cae cada 10-15 minutos. Debo reiniciar el módem constantemente.',
+      estado: 'EN_REVISION',
+      prioridad: 'ALTA',
+      categoria: 'INTERNET_ADSL',
+      direccion: 'Zona Rural, Km 15',
+      id_profesional: profesional2.id,
+      id_tecnico_asignado: tecnico2.id,
+      fecha_creacion: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+      fecha_asignacion: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000),
+      fecha_inicio_trabajo: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+      fecha_resolucion: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+      notas_resolucion: 'Reemplacé el módem y verifiqué la línea telefónica. Todo funcionando correctamente.',
     },
   });
-  console.log(`✅ Reclamo creado: ${reclamo5.codigo} - ${reclamo5.estado}`);
-
-  await prisma.auditoria.createMany({
-    data: [
-      {
-        reclamoId: reclamo5.id,
-        usuarioId: profesional2.id,
-        tipo: 'CREACION',
-        descripcion: 'Reclamo creado',
-      },
-      {
-        reclamoId: reclamo5.id,
-        usuarioId: supervisor.id,
-        tipo: 'ASIGNACION',
-        descripcion: `Reclamo asignado a ${tecnico1.nombre} ${tecnico1.apellido}`,
-      },
-      {
-        reclamoId: reclamo5.id,
-        usuarioId: tecnico1.id,
-        tipo: 'CAMBIO_ESTADO',
-        descripcion: 'Estado cambiado de ASIGNADO a EN_CURSO',
-      },
-      {
-        reclamoId: reclamo5.id,
-        usuarioId: supervisor.id,
-        tipo: 'CIERRE',
-        descripcion: 'Reclamo cerrado',
-        detalles: {
-          solucion: reclamo5.solucion,
-        },
-      },
-    ],
-  });
+  console.log(`✅ Reclamo 5 creado: ${reclamo5.numero_reclamo}`);
 
   // 3. CREAR NOTIFICACIONES
-  console.log('🔔 Creando notificaciones de ejemplo...');
+  console.log('🔔 Creando notificaciones...');
 
   await prisma.notificacion.createMany({
     data: [
       {
-        usuarioId: profesional1.id,
-        tipo: 'NUEVO_RECLAMO',
-        titulo: 'Reclamo creado exitosamente',
-        mensaje: `Tu reclamo ${reclamo1.codigo} ha sido creado y está siendo procesado.`,
-        reclamoId: reclamo1.id,
-        leida: false,
+        usuario_id: profesional1.id,
+        reclamo_id: reclamo1.id,
+        tipo: 'PUSH',
+        estado: 'ENVIADA',
+        titulo: 'Reclamo creado',
+        mensaje: `Tu reclamo ${reclamo1.numero_reclamo} ha sido registrado correctamente.`,
+        enviada_at: new Date(),
       },
       {
-        usuarioId: profesional2.id,
-        tipo: 'RECLAMO_ASIGNADO',
-        titulo: 'Técnico asignado a tu reclamo',
-        mensaje: `El técnico ${tecnico1.nombre} ${tecnico1.apellido} ha sido asignado a tu reclamo ${reclamo2.codigo}.`,
-        reclamoId: reclamo2.id,
-        leida: false,
+        usuario_id: profesional2.id,
+        reclamo_id: reclamo2.id,
+        tipo: 'EMAIL',
+        estado: 'ENTREGADA',
+        titulo: 'Reclamo asignado',
+        mensaje: `Tu reclamo ${reclamo2.numero_reclamo} ha sido asignado al técnico ${tecnico1.nombre}.`,
+        enviada_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        entregada_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
       },
       {
-        usuarioId: tecnico1.id,
-        tipo: 'RECLAMO_ASIGNADO',
-        titulo: 'Nuevo reclamo asignado',
-        mensaje: `Se te ha asignado el reclamo ${reclamo2.codigo} - ${reclamo2.titulo}`,
-        reclamoId: reclamo2.id,
-        leida: false,
+        usuario_id: profesional3.id,
+        reclamo_id: reclamo3.id,
+        tipo: 'PUSH',
+        estado: 'LEIDA',
+        titulo: 'Técnico en camino',
+        mensaje: `El técnico ${tecnico2.nombre} está trabajando en tu reclamo.`,
+        enviada_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        entregada_at: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
+        leida_at: new Date(Date.now() - 12 * 60 * 60 * 1000),
       },
       {
-        usuarioId: profesional2.id,
-        tipo: 'RECLAMO_CERRADO',
-        titulo: 'Reclamo cerrado',
-        mensaje: `Tu reclamo ${reclamo5.codigo} ha sido cerrado satisfactoriamente.`,
-        reclamoId: reclamo5.id,
-        leida: true,
-        fechaLectura: new Date(),
+        usuario_id: profesional1.id,
+        reclamo_id: reclamo4.id,
+        tipo: 'EMAIL',
+        estado: 'LEIDA',
+        titulo: 'Reclamo resuelto',
+        mensaje: `Tu reclamo ${reclamo4.numero_reclamo} ha sido resuelto. Por favor califica el servicio.`,
+        enviada_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        entregada_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
+        leida_at: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000),
       },
     ],
   });
   console.log('✅ Notificaciones creadas');
 
-  // 4. CREAR PREFERENCIAS DE NOTIFICACIÓN
-  console.log('⚙️  Configurando preferencias de notificación...');
-
-  await prisma.preferenciaNotificacion.createMany({
-    data: [
-      {
-        usuarioId: admin.id,
-        canalEmail: true,
-        canalPush: true,
-        canalTelegram: false,
-        tiposEmail: [
-          'NUEVO_RECLAMO',
-          'RECLAMO_ASIGNADO',
-          'CAMBIO_ESTADO',
-          'NUEVO_COMENTARIO',
-          'RECLAMO_CERRADO',
-        ],
-        tiposPush: [
-          'NUEVO_RECLAMO',
-          'CAMBIO_ESTADO',
-          'RECLAMO_CERRADO',
-        ],
-      },
-      {
-        usuarioId: supervisor.id,
-        canalEmail: true,
-        canalPush: true,
-        canalTelegram: false,
-        tiposEmail: [
-          'NUEVO_RECLAMO',
-          'RECLAMO_ASIGNADO',
-          'CAMBIO_ESTADO',
-          'RECLAMO_CERRADO',
-        ],
-        tiposPush: ['NUEVO_RECLAMO', 'CAMBIO_ESTADO'],
-      },
-      {
-        usuarioId: tecnico1.id,
-        canalEmail: true,
-        canalPush: true,
-        canalTelegram: false,
-        tiposEmail: ['RECLAMO_ASIGNADO', 'NUEVO_COMENTARIO'],
-        tiposPush: ['RECLAMO_ASIGNADO', 'NUEVO_COMENTARIO'],
-      },
-      {
-        usuarioId: profesional1.id,
-        canalEmail: true,
-        canalPush: true,
-        canalTelegram: false,
-        tiposEmail: [
-          'RECLAMO_ASIGNADO',
-          'CAMBIO_ESTADO',
-          'NUEVO_COMENTARIO',
-          'RECLAMO_CERRADO',
-        ],
-        tiposPush: ['CAMBIO_ESTADO', 'NUEVO_COMENTARIO', 'RECLAMO_CERRADO'],
-      },
-    ],
-  });
-  console.log('✅ Preferencias de notificación configuradas');
-
-  console.log('\n🎉 ¡Seed completado exitosamente!\n');
-  console.log('📊 Resumen de datos creados:');
-  console.log('  - 1 Administrador');
-  console.log('  - 1 Supervisor');
-  console.log('  - 2 Técnicos');
-  console.log('  - 3 Profesionales (clientes)');
-  console.log('  - 5 Reclamos (diferentes estados)');
-  console.log('  - Comentarios, auditorías y notificaciones de ejemplo');
-  console.log('\n🔐 Credenciales de acceso:');
-  console.log('  Email: admin@reclamos.com | supervisor@reclamos.com');
-  console.log('  Email: tecnico1@reclamos.com | tecnico2@reclamos.com');
-  console.log('  Email: cliente1@example.com | cliente2@example.com | cliente3@example.com');
-  console.log('  Password (todos): Password123!');
+  console.log('');
+  console.log('✨ Seed completado exitosamente!');
+  console.log('');
+  console.log('📊 Resumen:');
+  console.log(`   - ${await prisma.usuario.count()} usuarios creados`);
+  console.log(`   - ${await prisma.reclamo.count()} reclamos creados`);
+  console.log(`   - ${await prisma.comentario.count()} comentarios creados`);
+  console.log(`   - ${await prisma.notificacion.count()} notificaciones creadas`);
+  console.log(`   - ${await prisma.auditoriaReclamo.count()} auditorías creadas`);
+  console.log('');
+  console.log('🔑 Credenciales de acceso:');
+  console.log('   Email: admin@reclamos.com');
+  console.log('   Email: supervisor@reclamos.com');
+  console.log('   Email: tecnico1@reclamos.com');
+  console.log('   Email: tecnico2@reclamos.com');
+  console.log('   Email: profesional1@reclamos.com');
+  console.log('   Email: profesional2@reclamos.com');
+  console.log('   Email: profesional3@reclamos.com');
+  console.log('   Password para todos: Password123!');
   console.log('');
 }
 
 main()
-  .then(async () => {
-    await prisma.$disconnect();
-  })
-  .catch(async (e) => {
-    console.error('❌ Error durante el seed:', e);
-    await prisma.$disconnect();
+  .catch((e) => {
+    console.error('❌ Error en seed:', e);
     process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
   });

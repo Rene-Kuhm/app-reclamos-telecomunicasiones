@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reclamos/presentation/providers/reclamos_provider.dart';
+import '../../../reclamos/presentation/providers/reclamos_stats_provider.dart';
 import '../../../notificaciones/presentation/providers/notificaciones_provider.dart';
 import '../widgets/statistics_card.dart';
 import '../widgets/quick_action_button.dart';
@@ -20,7 +21,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   void initState() {
     super.initState();
     Future.microtask(() {
-      ref.read(reclamosProvider.notifier).loadReclamos(refresh: true);
       ref.read(notificacionesProvider.notifier).loadNotificaciones();
     });
   }
@@ -28,17 +28,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
-    final reclamosState = ref.watch(reclamosProvider);
+    final statsAsync = ref.watch(reclamosStatsProvider);
     final notificacionesState = ref.watch(notificacionesProvider);
+    final reclamosState = ref.watch(reclamosProvider);
 
     final user = authState.user;
-    final totalReclamos = reclamosState.reclamos.length;
-    final reclamosAbiertos = reclamosState.reclamos
-        .where((r) => r.estado.toUpperCase() == 'ABIERTO')
-        .length;
-    final reclamosEnCurso = reclamosState.reclamos
-        .where((r) => r.estado.toUpperCase() == 'EN_CURSO')
-        .length;
     final notificacionesNoLeidas = notificacionesState.unreadCount;
 
     return Scaffold(
@@ -59,16 +53,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([
-            ref.read(reclamosProvider.notifier).refresh(),
-            ref.read(notificacionesProvider.notifier).refresh(),
-          ]);
-        },
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
+      body: statsAsync.when(
+        data: (stats) => RefreshIndicator(
+          onRefresh: () async {
+            await Future.wait([
+              ref.refresh(reclamosStatsProvider.future),
+              ref.read(notificacionesProvider.notifier).refresh(),
+            ]);
+          },
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
             // Greeting card
             Card(
               child: Padding(
@@ -118,7 +113,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 Expanded(
                   child: StatisticsCard(
                     title: 'Total',
-                    value: totalReclamos.toString(),
+                    value: stats.total.toString(),
                     icon: Icons.report,
                     color: Colors.blue,
                   ),
@@ -126,8 +121,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: StatisticsCard(
-                    title: 'Abiertos',
-                    value: reclamosAbiertos.toString(),
+                    title: 'Pendientes',
+                    value: stats.pendientes.toString(),
                     icon: Icons.error_outline,
                     color: Colors.orange,
                   ),
@@ -139,8 +134,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               children: [
                 Expanded(
                   child: StatisticsCard(
-                    title: 'En Curso',
-                    value: reclamosEnCurso.toString(),
+                    title: 'En Progreso',
+                    value: stats.enProgreso.toString(),
                     icon: Icons.hourglass_empty,
                     color: Colors.purple,
                   ),
@@ -148,10 +143,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: StatisticsCard(
-                    title: 'Notificaciones',
-                    value: notificacionesNoLeidas.toString(),
-                    icon: Icons.notifications,
-                    color: Colors.red,
+                    title: 'Resueltos',
+                    value: stats.resueltos.toString(),
+                    icon: Icons.check_circle,
+                    color: Colors.green,
                   ),
                 ),
               ],
@@ -228,6 +223,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               }).toList(),
             ],
           ],
+        ),
+      ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stack) => Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(Icons.error, size: 64, color: Colors.red),
+              const SizedBox(height: 16),
+              Text('Error: $error'),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(reclamosStatsProvider),
+                child: const Text('Reintentar'),
+              ),
+            ],
+          ),
         ),
       ),
     );

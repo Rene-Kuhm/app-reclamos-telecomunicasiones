@@ -19,7 +19,7 @@ class NotificacionesRepositoryImpl implements NotificacionesRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -31,7 +31,7 @@ class NotificacionesRepositoryImpl implements NotificacionesRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -43,7 +43,7 @@ class NotificacionesRepositoryImpl implements NotificacionesRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -55,7 +55,7 @@ class NotificacionesRepositoryImpl implements NotificacionesRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 }

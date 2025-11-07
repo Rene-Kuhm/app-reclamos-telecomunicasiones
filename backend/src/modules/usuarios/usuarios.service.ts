@@ -7,10 +7,18 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateUsuarioDto, UpdateUsuarioDto, UpdatePasswordDto } from './dto';
 import * as bcrypt from 'bcrypt';
-import { Usuario, Role, EstadoUsuario, Prisma } from '@prisma/client';
+import { Usuario, Prisma } from '@prisma/client';
+
+// Define Role inline
+export enum RolUsuario {
+  PROFESIONAL = 'PROFESIONAL',
+  TECNICO = 'TECNICO',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMINISTRADOR = 'ADMINISTRADOR',
+}
 
 @Injectable()
 export class UsuariosService {
@@ -18,8 +26,8 @@ export class UsuariosService {
 
   constructor(private prisma: PrismaService) {}
 
-  async create(createUsuarioDto: CreateUsuarioDto): Promise<Usuario> {
-    const { email, password, dni, ...rest } = createUsuarioDto;
+  async create(createUsuarioDto: CreateUsuarioDto): Promise<any> {
+    const { email, password, ...rest } = createUsuarioDto;
 
     // Verificar si el email ya existe
     const existingEmail = await this.prisma.usuario.findUnique({
@@ -30,17 +38,6 @@ export class UsuariosService {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Verificar si el DNI ya existe
-    if (dni) {
-      const existingDni = await this.prisma.usuario.findUnique({
-        where: { dni },
-      });
-
-      if (existingDni) {
-        throw new ConflictException('El DNI ya está registrado');
-      }
-    }
-
     // Hash del password
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -48,19 +45,20 @@ export class UsuariosService {
       const usuario = await this.prisma.usuario.create({
         data: {
           email,
-          password: hashedPassword,
-          dni,
-          ...rest,
-          estado: EstadoUsuario.ACTIVO,
+          password_hash: hashedPassword,
+          nombre: rest.nombre,
+          apellido: rest.apellido,
+          telefono: rest.telefono,
+          rol: rest.rol || 'PROFESIONAL',
+          activo: true,
         },
       });
 
       this.logger.log(`Usuario creado: ${usuario.email}`);
 
       // Eliminar campos sensibles
-      const { password: _, refreshToken: __, mfaSecret: ___, ...result } =
-        usuario;
-      return result as Usuario;
+      const { password_hash: _, mfa_secret, ...result } = usuario;
+      return result;
     } catch (error) {
       this.logger.error('Error al crear usuario', error);
       throw new BadRequestException('Error al crear usuario');
@@ -72,7 +70,7 @@ export class UsuariosService {
     take?: number;
     where?: Prisma.UsuarioWhereInput;
     orderBy?: Prisma.UsuarioOrderByWithRelationInput;
-  }): Promise<{ data: Usuario[]; total: number }> {
+  }): Promise<{ data: any[]; total: number }> {
     const { skip = 0, take = 10, where, orderBy } = params || {};
 
     const [data, total] = await Promise.all([
@@ -81,56 +79,52 @@ export class UsuariosService {
         take,
         where: {
           ...where,
-          deletedAt: null, // Solo usuarios no eliminados
+          deleted_at: null, // Solo usuarios no eliminados
         },
-        orderBy: orderBy || { createdAt: 'desc' },
+        orderBy: orderBy || { created_at: 'desc' },
         select: {
           id: true,
           email: true,
           nombre: true,
           apellido: true,
           telefono: true,
-          dni: true,
-          direccion: true,
           rol: true,
-          estado: true,
-          ultimoLogin: true,
-          mfaEnabled: true,
-          notificacionesEnabled: true,
-          createdAt: true,
-          updatedAt: true,
+          activo: true,
+          ultimo_login: true,
+          mfa_habilitado: true,
+          created_at: true,
+          updated_at: true,
         },
       }),
       this.prisma.usuario.count({
         where: {
           ...where,
-          deletedAt: null,
+          deleted_at: null,
         },
       }),
     ]);
 
-    return { data: data as Usuario[], total };
+    return { data, total };
   }
 
   async findByFilters(
-    rol?: Role,
-    estado?: EstadoUsuario,
+    rol?: string,
+    activo?: boolean,
     search?: string,
     page: number = 1,
     limit: number = 10,
-  ): Promise<{ data: Usuario[]; total: number; page: number; pages: number }> {
+  ): Promise<{ data: any[]; total: number; page: number; pages: number }> {
     const skip = (page - 1) * limit;
 
     const where: Prisma.UsuarioWhereInput = {
-      deletedAt: null,
+      deleted_at: null,
       ...(rol && { rol }),
-      ...(estado && { estado }),
+      ...(activo !== undefined && { activo }),
       ...(search && {
         OR: [
           { email: { contains: search, mode: 'insensitive' } },
           { nombre: { contains: search, mode: 'insensitive' } },
           { apellido: { contains: search, mode: 'insensitive' } },
-          { dni: { contains: search, mode: 'insensitive' } },
         ],
       }),
     };
@@ -149,41 +143,41 @@ export class UsuariosService {
     };
   }
 
-  async findOne(id: string): Promise<Usuario> {
+  async findOne(id: string): Promise<any> {
     const usuario = await this.prisma.usuario.findFirst({
       where: {
         id,
-        deletedAt: null,
+        deleted_at: null,
       },
       include: {
-        reclamosCreados: {
+        reclamos_creados: {
           take: 5,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { created_at: 'desc' },
           select: {
             id: true,
-            codigo: true,
+            numero_reclamo: true,
             titulo: true,
             estado: true,
             prioridad: true,
-            createdAt: true,
+            created_at: true,
           },
         },
-        reclamosAsignados: {
+        reclamos_asignados: {
           take: 5,
-          orderBy: { createdAt: 'desc' },
+          orderBy: { created_at: 'desc' },
           select: {
             id: true,
-            codigo: true,
+            numero_reclamo: true,
             titulo: true,
             estado: true,
             prioridad: true,
-            createdAt: true,
+            created_at: true,
           },
         },
         _count: {
           select: {
-            reclamosCreados: true,
-            reclamosAsignados: true,
+            reclamos_creados: true,
+            reclamos_asignados: true,
             comentarios: true,
             notificaciones: true,
           },
@@ -196,15 +190,15 @@ export class UsuariosService {
     }
 
     // Eliminar campos sensibles
-    const { password, refreshToken, mfaSecret, ...result } = usuario;
-    return result as Usuario;
+    const { password_hash, mfa_secret, ...result } = usuario;
+    return result;
   }
 
   async findByEmail(email: string): Promise<Usuario> {
     const usuario = await this.prisma.usuario.findFirst({
       where: {
         email,
-        deletedAt: null,
+        deleted_at: null,
       },
     });
 
@@ -219,13 +213,13 @@ export class UsuariosService {
     id: string,
     updateUsuarioDto: UpdateUsuarioDto,
     currentUserId: string,
-    currentUserRole: Role,
-  ): Promise<Usuario> {
+    currentUserRole: string,
+  ): Promise<any> {
     // Verificar que el usuario existe
     const usuario = await this.findOne(id);
 
     // Verificar permisos
-    if (currentUserId !== id && currentUserRole !== Role.ADMINISTRADOR) {
+    if (currentUserId !== id && currentUserRole !== RolUsuario.ADMINISTRADOR) {
       throw new ForbiddenException(
         'No tienes permisos para actualizar este usuario',
       );
@@ -235,16 +229,16 @@ export class UsuariosService {
     if (
       updateUsuarioDto.rol &&
       updateUsuarioDto.rol !== usuario.rol &&
-      currentUserRole !== Role.ADMINISTRADOR
+      currentUserRole !== RolUsuario.ADMINISTRADOR
     ) {
       throw new ForbiddenException('Solo un administrador puede cambiar roles');
     }
 
     // Si se está cambiando el estado, solo el admin puede hacerlo
     if (
-      updateUsuarioDto.estado &&
-      updateUsuarioDto.estado !== usuario.estado &&
-      currentUserRole !== Role.ADMINISTRADOR
+      updateUsuarioDto.activo !== undefined &&
+      updateUsuarioDto.activo !== usuario.activo &&
+      currentUserRole !== RolUsuario.ADMINISTRADOR
     ) {
       throw new ForbiddenException(
         'Solo un administrador puede cambiar el estado',
@@ -262,17 +256,6 @@ export class UsuariosService {
       }
     }
 
-    // Verificar DNI único si se está cambiando
-    if (updateUsuarioDto.dni && updateUsuarioDto.dni !== usuario.dni) {
-      const existingDni = await this.prisma.usuario.findUnique({
-        where: { dni: updateUsuarioDto.dni },
-      });
-
-      if (existingDni) {
-        throw new ConflictException('El DNI ya está en uso');
-      }
-    }
-
     try {
       const updatedUsuario = await this.prisma.usuario.update({
         where: { id },
@@ -282,8 +265,8 @@ export class UsuariosService {
       this.logger.log(`Usuario actualizado: ${updatedUsuario.email}`);
 
       // Eliminar campos sensibles
-      const { password, refreshToken, mfaSecret, ...result } = updatedUsuario;
-      return result as Usuario;
+      const { password_hash, mfa_secret, ...result } = updatedUsuario;
+      return result;
     } catch (error) {
       this.logger.error('Error al actualizar usuario', error);
       throw new BadRequestException('Error al actualizar usuario');
@@ -313,7 +296,7 @@ export class UsuariosService {
     // Verificar contraseña actual
     const isPasswordValid = await bcrypt.compare(
       updatePasswordDto.currentPassword,
-      usuario.password,
+      usuario.password_hash,
     );
 
     if (!isPasswordValid) {
@@ -326,9 +309,8 @@ export class UsuariosService {
     await this.prisma.usuario.update({
       where: { id },
       data: {
-        password: hashedPassword,
-        // Invalidar refresh tokens al cambiar contraseña
-        refreshToken: null,
+        password_hash: hashedPassword,
+        ultimo_cambio_pass: new Date(),
       },
     });
 
@@ -340,23 +322,23 @@ export class UsuariosService {
   async remove(
     id: string,
     currentUserId: string,
-    currentUserRole: Role,
+    currentUserRole: string,
   ): Promise<{ message: string }> {
     const usuario = await this.findOne(id);
 
     // Solo admins pueden eliminar usuarios, o el propio usuario
-    if (currentUserId !== id && currentUserRole !== Role.ADMINISTRADOR) {
+    if (currentUserId !== id && currentUserRole !== RolUsuario.ADMINISTRADOR) {
       throw new ForbiddenException(
         'No tienes permisos para eliminar este usuario',
       );
     }
 
     // No permitir eliminar al último admin
-    if (usuario.rol === Role.ADMINISTRADOR) {
+    if (usuario.rol === RolUsuario.ADMINISTRADOR) {
       const adminCount = await this.prisma.usuario.count({
         where: {
-          rol: Role.ADMINISTRADOR,
-          deletedAt: null,
+          rol: RolUsuario.ADMINISTRADOR,
+          deleted_at: null,
           id: { not: id },
         },
       });
@@ -372,8 +354,8 @@ export class UsuariosService {
     await this.prisma.usuario.update({
       where: { id },
       data: {
-        deletedAt: new Date(),
-        estado: EstadoUsuario.INACTIVO,
+        deleted_at: new Date(),
+        activo: false,
         // Agregar timestamp al email para permitir reutilización
         email: `${usuario.email}_deleted_${Date.now()}`,
       },
@@ -386,10 +368,10 @@ export class UsuariosService {
 
   async restore(
     id: string,
-    currentUserRole: Role,
-  ): Promise<Usuario> {
+    currentUserRole: string,
+  ): Promise<any> {
     // Solo admins pueden restaurar usuarios
-    if (currentUserRole !== Role.ADMINISTRADOR) {
+    if (currentUserRole !== RolUsuario.ADMINISTRADOR) {
       throw new ForbiddenException(
         'Solo administradores pueden restaurar usuarios',
       );
@@ -403,7 +385,7 @@ export class UsuariosService {
       throw new NotFoundException('Usuario no encontrado');
     }
 
-    if (!usuario.deletedAt) {
+    if (!usuario.deleted_at) {
       throw new BadRequestException('El usuario no está eliminado');
     }
 
@@ -427,48 +409,48 @@ export class UsuariosService {
     const restoredUsuario = await this.prisma.usuario.update({
       where: { id },
       data: {
-        deletedAt: null,
+        deleted_at: null,
         email: originalEmail,
-        estado: EstadoUsuario.ACTIVO,
+        activo: true,
       },
     });
 
     this.logger.log(`Usuario restaurado: ${originalEmail}`);
 
-    const { password, refreshToken, mfaSecret, ...result } = restoredUsuario;
-    return result as Usuario;
+    const { password_hash, mfa_secret, ...result } = restoredUsuario;
+    return result;
   }
 
   async getStats(): Promise<any> {
     const [
       totalUsuarios,
       usuariosActivos,
-      usuariosSuspendidos,
+      usuariosInactivos,
       usuariosPorRol,
       usuariosConMfa,
       usuariosNuevosEsteMes,
     ] = await Promise.all([
-      this.prisma.usuario.count({ where: { deletedAt: null } }),
+      this.prisma.usuario.count({ where: { deleted_at: null } }),
       this.prisma.usuario.count({
-        where: { estado: EstadoUsuario.ACTIVO, deletedAt: null },
+        where: { activo: true, deleted_at: null },
       }),
       this.prisma.usuario.count({
-        where: { estado: EstadoUsuario.SUSPENDIDO, deletedAt: null },
+        where: { activo: false, deleted_at: null },
       }),
       this.prisma.usuario.groupBy({
         by: ['rol'],
-        where: { deletedAt: null },
+        where: { deleted_at: null },
         _count: true,
       }),
       this.prisma.usuario.count({
-        where: { mfaEnabled: true, deletedAt: null },
+        where: { mfa_habilitado: true, deleted_at: null },
       }),
       this.prisma.usuario.count({
         where: {
-          createdAt: {
+          created_at: {
             gte: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
           },
-          deletedAt: null,
+          deleted_at: null,
         },
       }),
     ]);
@@ -476,11 +458,11 @@ export class UsuariosService {
     return {
       totalUsuarios,
       usuariosActivos,
-      usuariosSuspendidos,
-      usuariosPorRol: usuariosPorRol.reduce((acc, curr) => {
+      usuariosInactivos,
+      usuariosPorRol: usuariosPorRol.reduce((acc: Record<string, number>, curr: any) => {
         acc[curr.rol] = curr._count;
         return acc;
-      }, {}),
+      }, {} as Record<string, number>),
       usuariosConMfa,
       usuariosNuevosEsteMes,
     };

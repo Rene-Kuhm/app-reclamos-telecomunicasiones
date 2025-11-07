@@ -8,7 +8,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoReclamo, PrioridadReclamo, TipoServicio } from '@prisma/client';
+import { CategoriaReclamo, PrioridadReclamo } from '../../../common/types/prisma-enums';
 
 export class UpdateReclamoDto {
   @ApiPropertyOptional({
@@ -28,20 +28,12 @@ export class UpdateReclamoDto {
   descripcion?: string;
 
   @ApiPropertyOptional({
-    description: 'Tipo de reclamo',
-    enum: TipoReclamo,
+    description: 'Categoría del reclamo',
+    enum: CategoriaReclamo,
   })
   @IsOptional()
-  @IsEnum(TipoReclamo)
-  tipo?: TipoReclamo;
-
-  @ApiPropertyOptional({
-    description: 'Tipo de servicio afectado',
-    enum: TipoServicio,
-  })
-  @IsOptional()
-  @IsEnum(TipoServicio)
-  tipoServicio?: TipoServicio;
+  @IsEnum(CategoriaReclamo)
+  categoria?: CategoriaReclamo;
 
   @ApiPropertyOptional({
     description: 'Prioridad del reclamo',

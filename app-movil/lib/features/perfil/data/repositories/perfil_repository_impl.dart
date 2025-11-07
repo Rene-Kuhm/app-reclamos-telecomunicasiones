@@ -20,7 +20,7 @@ class PerfilRepositoryImpl implements PerfilRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -44,7 +44,7 @@ class PerfilRepositoryImpl implements PerfilRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -64,7 +64,7 @@ class PerfilRepositoryImpl implements PerfilRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 }

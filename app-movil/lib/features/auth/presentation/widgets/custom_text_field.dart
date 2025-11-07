@@ -13,7 +13,9 @@ class CustomTextField extends StatelessWidget {
   final int maxLines;
   final int? maxLength;
   final TextCapitalization textCapitalization;
+  final TextInputAction? textInputAction;
   final void Function(String)? onChanged;
+  final void Function(String)? onSubmitted;
 
   const CustomTextField({
     super.key,
@@ -29,7 +31,9 @@ class CustomTextField extends StatelessWidget {
     this.maxLines = 1,
     this.maxLength,
     this.textCapitalization = TextCapitalization.none,
+    this.textInputAction,
     this.onChanged,
+    this.onSubmitted,
   });
 
   @override
@@ -49,7 +53,9 @@ class CustomTextField extends StatelessWidget {
       maxLines: maxLines,
       maxLength: maxLength,
       textCapitalization: textCapitalization,
+      textInputAction: textInputAction,
       onChanged: onChanged,
+      onFieldSubmitted: onSubmitted,
     );
   }
 }

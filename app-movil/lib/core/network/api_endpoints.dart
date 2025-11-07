@@ -12,6 +12,8 @@ class ApiEndpoints {
   static const String refresh = '$auth/refresh';
   static const String changePassword = '$auth/change-password';
   static const String logout = '$auth/logout';
+  static const String forgotPassword = '$auth/forgot-password';
+  static const String resetPassword = '$auth/reset-password';
 
   // User endpoints
   static const String me = '$usuarios/me';
@@ -24,6 +26,7 @@ class ApiEndpoints {
   static const String reclamoById = '$reclamos/:id';
   static const String updateReclamo = '$reclamos/:id';
   static const String deleteReclamo = '$reclamos/:id';
+  static const String reclamosStats = '$reclamos/stats';
   static const String reclamoComentarios = '$reclamos/:id/comentarios';
   static const String createComentario = '$reclamos/:id/comentarios';
   static const String reclamoArchivos = '$reclamos/:id/archivos';

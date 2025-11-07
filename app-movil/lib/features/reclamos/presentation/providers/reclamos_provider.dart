@@ -15,6 +15,7 @@ class ReclamosState {
   final String? estadoFilter;
   final String? categoriaFilter;
   final String? prioridadFilter;
+  final String? searchQuery;
   final bool hasMore;
   final int currentPage;
 
@@ -25,6 +26,7 @@ class ReclamosState {
     this.estadoFilter,
     this.categoriaFilter,
     this.prioridadFilter,
+    this.searchQuery,
     this.hasMore = true,
     this.currentPage = 1,
   });
@@ -36,6 +38,7 @@ class ReclamosState {
     String? estadoFilter,
     String? categoriaFilter,
     String? prioridadFilter,
+    String? searchQuery,
     bool? hasMore,
     int? currentPage,
   }) {
@@ -46,6 +49,7 @@ class ReclamosState {
       estadoFilter: estadoFilter ?? this.estadoFilter,
       categoriaFilter: categoriaFilter ?? this.categoriaFilter,
       prioridadFilter: prioridadFilter ?? this.prioridadFilter,
+      searchQuery: searchQuery ?? this.searchQuery,
       hasMore: hasMore ?? this.hasMore,
       currentPage: currentPage ?? this.currentPage,
     );
@@ -99,6 +103,7 @@ class ReclamosNotifier extends StateNotifier<ReclamosState> {
       estado: state.estadoFilter,
       categoria: state.categoriaFilter,
       prioridad: state.prioridadFilter,
+      search: state.searchQuery,
       page: refresh ? 1 : state.currentPage,
       limit: 20,
     );
@@ -160,6 +165,17 @@ class ReclamosNotifier extends StateNotifier<ReclamosState> {
   /// Clear all filters
   void clearFilters() {
     state = state.clearFilters().copyWith(
+      reclamos: [],
+      currentPage: 1,
+      hasMore: true,
+    );
+    loadReclamos(refresh: true);
+  }
+
+  /// Search reclamos
+  void searchReclamos(String query) {
+    state = state.copyWith(
+      searchQuery: query.isEmpty ? null : query,
       reclamos: [],
       currentPage: 1,
       hasMore: true,

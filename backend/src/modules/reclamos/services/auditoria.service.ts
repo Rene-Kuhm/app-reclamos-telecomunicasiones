@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { TipoAuditoria, Prisma } from '@prisma/client';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AuditoriaService {
@@ -14,23 +14,23 @@ export class AuditoriaService {
   async registrar(
     reclamoId: string,
     usuarioId: string,
-    tipo: TipoAuditoria,
+    accion: string,
     descripcion: string,
     detalles?: Record<string, any>,
   ): Promise<void> {
     try {
-      await this.prisma.auditoria.create({
+      await this.prisma.auditoriaReclamo.create({
         data: {
-          reclamoId,
-          usuarioId,
-          tipo,
-          descripcion,
-          detalles: detalles as Prisma.InputJsonValue,
+          reclamo_id: reclamoId,
+          usuario_id: usuarioId,
+          accion: accion,
+          notas: descripcion,
+          campos_cambiados: detalles ? JSON.stringify(detalles) : null,
         },
       });
 
       this.logger.log(
-        `Auditoría registrada: ${tipo} - ${descripcion} (Reclamo: ${reclamoId}, Usuario: ${usuarioId})`,
+        `Auditoría registrada: ${accion} - ${descripcion} (Reclamo: ${reclamoId}, Usuario: ${usuarioId})`,
       );
     } catch (error) {
       this.logger.error('Error al registrar auditoría', error);
@@ -51,7 +51,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.CAMBIO_ESTADO,
+      'CAMBIO_ESTADO',
       `Estado cambiado de ${estadoAnterior} a ${estadoNuevo}`,
       {
         estadoAnterior,
@@ -74,7 +74,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.ASIGNACION,
+      'ASIGNACION',
       `Reclamo asignado a ${tecnicoNombre}`,
       {
         tecnicoId,
@@ -99,7 +99,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.REASIGNACION,
+      'REASIGNACION',
       `Reclamo reasignado de ${tecnicoAnteriorNombre} a ${tecnicoNuevoNombre}`,
       {
         tecnicoAnteriorId,
@@ -124,7 +124,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.ACTUALIZACION,
+      'ACTUALIZACION',
       `Campos actualizados: ${camposActualizados.join(', ')}`,
       {
         camposActualizados,
@@ -147,7 +147,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.CAMBIO_PRIORIDAD,
+      'CAMBIO_PRIORIDAD',
       `Prioridad cambiada de ${prioridadAnterior} a ${prioridadNueva}`,
       {
         prioridadAnterior,
@@ -169,7 +169,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.CIERRE,
+      'CIERRE',
       'Reclamo cerrado',
       {
         solucion,
@@ -189,7 +189,7 @@ export class AuditoriaService {
     await this.registrar(
       reclamoId,
       usuarioId,
-      TipoAuditoria.RECHAZO,
+      'RECHAZO',
       'Reclamo rechazado',
       {
         motivo,
@@ -201,8 +201,8 @@ export class AuditoriaService {
    * Obtiene el historial de auditoría de un reclamo
    */
   async obtenerHistorial(reclamoId: string): Promise<any[]> {
-    const auditorias = await this.prisma.auditoria.findMany({
-      where: { reclamoId },
+    const auditorias = await this.prisma.auditoriaReclamo.findMany({
+      where: { reclamo_id: reclamoId },
       include: {
         usuario: {
           select: {
@@ -215,21 +215,21 @@ export class AuditoriaService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
-    return auditorias.map((auditoria) => ({
+    return auditorias.map((auditoria: any) => ({
       id: auditoria.id,
-      tipo: auditoria.tipo,
-      descripcion: auditoria.descripcion,
-      detalles: auditoria.detalles,
+      accion: auditoria.accion,
+      descripcion: auditoria.notas,
+      detalles: auditoria.campos_cambiados ? JSON.parse(auditoria.campos_cambiados) : null,
       usuario: {
         nombre: `${auditoria.usuario.nombre} ${auditoria.usuario.apellido}`,
         email: auditoria.usuario.email,
         rol: auditoria.usuario.rol,
       },
-      fecha: auditoria.createdAt,
+      fecha: auditoria.created_at,
     }));
   }
 
@@ -237,26 +237,26 @@ export class AuditoriaService {
    * Obtiene estadísticas de auditoría
    */
   async obtenerEstadisticas(fechaInicio?: Date, fechaFin?: Date): Promise<any> {
-    const where: Prisma.AuditoriaWhereInput = {};
+    const where: Prisma.AuditoriaReclamoWhereInput = {};
 
     if (fechaInicio || fechaFin) {
-      where.createdAt = {};
+      where.created_at = {};
       if (fechaInicio) {
-        where.createdAt.gte = fechaInicio;
+        where.created_at.gte = fechaInicio;
       }
       if (fechaFin) {
-        where.createdAt.lte = fechaFin;
+        where.created_at.lte = fechaFin;
       }
     }
 
     const [totalEventos, eventosPorTipo, eventosRecientes] = await Promise.all([
-      this.prisma.auditoria.count({ where }),
-      this.prisma.auditoria.groupBy({
-        by: ['tipo'],
+      this.prisma.auditoriaReclamo.count({ where }),
+      this.prisma.auditoriaReclamo.groupBy({
+        by: ['accion'],
         where,
         _count: true,
       }),
-      this.prisma.auditoria.findMany({
+      this.prisma.auditoriaReclamo.findMany({
         where,
         include: {
           usuario: {
@@ -268,13 +268,13 @@ export class AuditoriaService {
           },
           reclamo: {
             select: {
-              codigo: true,
+              numero_reclamo: true,
               titulo: true,
             },
           },
         },
         orderBy: {
-          createdAt: 'desc',
+          created_at: 'desc',
         },
         take: 10,
       }),
@@ -282,17 +282,17 @@ export class AuditoriaService {
 
     return {
       totalEventos,
-      eventosPorTipo: eventosPorTipo.reduce((acc, curr) => {
-        acc[curr.tipo] = curr._count;
+      eventosPorTipo: eventosPorTipo.reduce((acc: Record<string, number>, curr: any) => {
+        acc[curr.accion] = curr._count;
         return acc;
-      }, {}),
-      eventosRecientes: eventosRecientes.map((evento) => ({
-        tipo: evento.tipo,
-        descripcion: evento.descripcion,
+      }, {} as Record<string, number>),
+      eventosRecientes: eventosRecientes.map((evento: any) => ({
+        accion: evento.accion,
+        descripcion: evento.notas,
         usuario: `${evento.usuario.nombre} ${evento.usuario.apellido}`,
         rol: evento.usuario.rol,
-        reclamo: evento.reclamo.codigo,
-        fecha: evento.createdAt,
+        reclamo: evento.reclamo.numero_reclamo,
+        fecha: evento.created_at,
       })),
     };
   }

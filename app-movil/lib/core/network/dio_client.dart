@@ -72,16 +72,17 @@ class DioClient {
         },
       ),
 
-      // Logging interceptor (only in debug mode)
-      PrettyDioLogger(
-        requestHeader: true,
-        requestBody: true,
-        responseBody: true,
-        responseHeader: false,
-        error: true,
-        compact: true,
-        maxWidth: 90,
-      ),
+      // Logging interceptor (only when enabled)
+      if (AppConfig.enableLogging)
+        PrettyDioLogger(
+          requestHeader: true,
+          requestBody: true,
+          responseBody: true,
+          responseHeader: false,
+          error: true,
+          compact: true,
+          maxWidth: 90,
+        ),
     ]);
   }
 

@@ -109,6 +109,7 @@ class AuthNotifier extends StateNotifier<AuthState> {
 
     return result.fold(
       (failure) {
+        print('[AuthProvider] Login failed: ${failure.message}');
         state = state.copyWith(
           isLoading: false,
           error: failure.message,
@@ -116,12 +117,15 @@ class AuthNotifier extends StateNotifier<AuthState> {
         return false;
       },
       (user) {
+        print('[AuthProvider] Login successful - User: ${user.nombre}, Email: ${user.email}');
+        print('[AuthProvider] Setting isAuthenticated = true');
         state = state.copyWith(
           isAuthenticated: true,
           user: user,
           isLoading: false,
           error: null,
         );
+        print('[AuthProvider] State updated - isAuthenticated: ${state.isAuthenticated}');
         return true;
       },
     );
@@ -218,6 +222,60 @@ class AuthNotifier extends StateNotifier<AuthState> {
       },
       (user) {
         state = state.copyWith(user: user, error: null);
+      },
+    );
+  }
+
+  /// Forgot password
+  Future<bool> forgotPassword({required String email}) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    final result = await _authRepository.forgotPassword(email: email);
+
+    return result.fold(
+      (failure) {
+        state = state.copyWith(
+          isLoading: false,
+          error: failure.message,
+        );
+        return false;
+      },
+      (success) {
+        state = state.copyWith(
+          isLoading: false,
+          error: null,
+        );
+        return true;
+      },
+    );
+  }
+
+  /// Reset password
+  Future<bool> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    final result = await _authRepository.resetPassword(
+      token: token,
+      newPassword: newPassword,
+    );
+
+    return result.fold(
+      (failure) {
+        state = state.copyWith(
+          isLoading: false,
+          error: failure.message,
+        );
+        return false;
+      },
+      (success) {
+        state = state.copyWith(
+          isLoading: false,
+          error: null,
+        );
+        return true;
       },
     );
   }

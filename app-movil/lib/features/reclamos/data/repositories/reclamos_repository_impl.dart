@@ -7,6 +7,7 @@ import '../models/create_reclamo_request.dart';
 import '../models/update_reclamo_request.dart';
 import '../models/comentario_model.dart';
 import '../models/archivo_model.dart';
+import '../models/reclamos_stats_model.dart';
 
 /// Reclamos repository implementation
 class ReclamosRepositoryImpl implements ReclamosRepository {
@@ -19,6 +20,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     String? estado,
     String? categoria,
     String? prioridad,
+    String? search,
     int? page,
     int? limit,
   }) async {
@@ -27,6 +29,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
         estado: estado,
         categoria: categoria,
         prioridad: prioridad,
+        search: search,
         page: page,
         limit: limit,
       );
@@ -36,7 +39,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -48,7 +51,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -72,7 +75,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -99,7 +102,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -111,7 +114,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -124,7 +127,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -140,7 +143,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -153,7 +156,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -173,7 +176,7 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
     }
   }
 
@@ -188,7 +191,19 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     } on ApiError catch (error) {
       return Left(error);
     } catch (error) {
-      return Left(ApiError.unknown(error.toString()));
+      return Left(ErrorHandler.handleError(error));
+    }
+  }
+
+  @override
+  Future<Either<ApiError, ReclamosStatsModel>> getStats() async {
+    try {
+      final stats = await _remoteDataSource.getStats();
+      return Right(stats);
+    } on ApiError catch (error) {
+      return Left(error);
+    } catch (error) {
+      return Left(ErrorHandler.handleError(error));
     }
   }
 }

@@ -4,7 +4,15 @@ import {
   Logger,
   ForbiddenException,
 } from '@nestjs/common';
-import { EstadoReclamo, Role } from '@prisma/client';
+import { EstadoReclamo } from '../../../common/types/prisma-enums';
+
+// Define RolUsuario inline
+enum RolUsuario {
+  PROFESIONAL = 'PROFESIONAL',
+  TECNICO = 'TECNICO',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMINISTRADOR = 'ADMINISTRADOR',
+}
 
 @Injectable()
 export class WorkflowService {
@@ -41,48 +49,48 @@ export class WorkflowService {
 
   // Roles permitidos para cada transición
   private readonly rolePermissions: Record<
-    EstadoReclamo,
-    Partial<Record<EstadoReclamo, Role[]>>
+    string,
+    Partial<Record<string, string[]>>
   > = {
     [EstadoReclamo.ABIERTO]: {
       [EstadoReclamo.ASIGNADO]: [
-        Role.ADMINISTRADOR,
-        Role.SUPERVISOR,
-        Role.TECNICO,
+        RolUsuario.ADMINISTRADOR,
+        RolUsuario.SUPERVISOR,
+        RolUsuario.TECNICO,
       ],
-      [EstadoReclamo.RECHAZADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
-      [EstadoReclamo.CERRADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
+      [EstadoReclamo.RECHAZADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
+      [EstadoReclamo.CERRADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
     },
     [EstadoReclamo.ASIGNADO]: {
       [EstadoReclamo.EN_CURSO]: [
-        Role.ADMINISTRADOR,
-        Role.SUPERVISOR,
-        Role.TECNICO,
+        RolUsuario.ADMINISTRADOR,
+        RolUsuario.SUPERVISOR,
+        RolUsuario.TECNICO,
       ],
-      [EstadoReclamo.ABIERTO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
-      [EstadoReclamo.RECHAZADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
+      [EstadoReclamo.ABIERTO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
+      [EstadoReclamo.RECHAZADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
     },
     [EstadoReclamo.EN_CURSO]: {
       [EstadoReclamo.EN_REVISION]: [
-        Role.ADMINISTRADOR,
-        Role.SUPERVISOR,
-        Role.TECNICO,
+        RolUsuario.ADMINISTRADOR,
+        RolUsuario.SUPERVISOR,
+        RolUsuario.TECNICO,
       ],
       [EstadoReclamo.ASIGNADO]: [
-        Role.ADMINISTRADOR,
-        Role.SUPERVISOR,
-        Role.TECNICO,
+        RolUsuario.ADMINISTRADOR,
+        RolUsuario.SUPERVISOR,
+        RolUsuario.TECNICO,
       ],
-      [EstadoReclamo.RECHAZADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
+      [EstadoReclamo.RECHAZADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
     },
     [EstadoReclamo.EN_REVISION]: {
-      [EstadoReclamo.CERRADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
-      [EstadoReclamo.EN_CURSO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
-      [EstadoReclamo.RECHAZADO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
+      [EstadoReclamo.CERRADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
+      [EstadoReclamo.EN_CURSO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
+      [EstadoReclamo.RECHAZADO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
     },
     [EstadoReclamo.CERRADO]: {},
     [EstadoReclamo.RECHAZADO]: {
-      [EstadoReclamo.ABIERTO]: [Role.ADMINISTRADOR, Role.SUPERVISOR],
+      [EstadoReclamo.ABIERTO]: [RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR],
     },
   };
 
@@ -112,9 +120,9 @@ export class WorkflowService {
    * Valida si un usuario tiene permisos para realizar una transición
    */
   validateUserPermission(
-    currentState: EstadoReclamo,
-    newState: EstadoReclamo,
-    userRole: Role,
+    currentState: string,
+    newState: string,
+    userRole: string,
     isAssignedTechnician: boolean = false,
   ): boolean {
     if (currentState === newState) {
@@ -122,7 +130,7 @@ export class WorkflowService {
     }
 
     // Los administradores tienen permisos completos
-    if (userRole === Role.ADMINISTRADOR) {
+    if (userRole === RolUsuario.ADMINISTRADOR) {
       return true;
     }
 
@@ -135,7 +143,7 @@ export class WorkflowService {
     }
 
     // Si es un técnico, verificar que sea el técnico asignado
-    if (userRole === Role.TECNICO && !isAssignedTechnician) {
+    if (userRole === RolUsuario.TECNICO && !isAssignedTechnician) {
       throw new ForbiddenException(
         'Solo el técnico asignado puede cambiar el estado',
       );
@@ -219,7 +227,8 @@ export class WorkflowService {
   /**
    * Calcula el tiempo restante en horas
    */
-  getTimeRemaining(fechaLimite: Date): number {
+  getTimeRemaining(fechaLimite: Date | null): number {
+    if (!fechaLimite) return 0;
     const now = new Date();
     const diff = fechaLimite.getTime() - now.getTime();
     return Math.floor(diff / (1000 * 60 * 60)); // Horas

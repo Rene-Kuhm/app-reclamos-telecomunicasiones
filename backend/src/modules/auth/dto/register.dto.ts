@@ -8,7 +8,14 @@ import {
   Matches,
   IsOptional,
 } from 'class-validator';
-import { RolUsuario } from '@prisma/client';
+
+// Define RolUsuario inline to avoid import issues
+export enum RolUsuario {
+  PROFESIONAL = 'PROFESIONAL',
+  TECNICO = 'TECNICO',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMINISTRADOR = 'ADMINISTRADOR',
+}
 
 /**
  * DTO para registro de nuevos usuarios
@@ -71,5 +78,5 @@ export class RegisterDto {
     example: RolUsuario.PROFESIONAL,
   })
   @IsEnum(RolUsuario, { message: 'Rol inválido' })
-  rol: RolUsuario;
+  rol: string;
 }

@@ -37,4 +37,13 @@ abstract class AuthRepository {
 
   /// Check if user is logged in
   Future<bool> isLoggedIn();
+
+  /// Forgot password - send reset email
+  Future<Either<Failure, void>> forgotPassword({required String email});
+
+  /// Reset password with token
+  Future<Either<Failure, void>> resetPassword({
+    required String token,
+    required String newPassword,
+  });
 }

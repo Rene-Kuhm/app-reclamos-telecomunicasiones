@@ -4,8 +4,8 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
-import { Role, EstadoUsuario, EstadoReclamo } from '@prisma/client';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { RolUsuario, EstadoUsuario, EstadoReclamo } from '../../../common/types/prisma-enums';
 
 @Injectable()
 export class AsignacionService {
@@ -23,14 +23,14 @@ export class AsignacionService {
       // Buscar técnicos disponibles (con menos reclamos asignados)
       const tecnicos = await this.prisma.usuario.findMany({
         where: {
-          rol: Role.TECNICO,
-          estado: EstadoUsuario.ACTIVO,
-          deletedAt: null,
+          rol: RolUsuario.TECNICO,
+          activo: true,
+          deleted_at: null,
         },
         include: {
           _count: {
             select: {
-              reclamosAsignados: {
+              reclamos_asignados: {
                 where: {
                   estado: {
                     in: [
@@ -45,7 +45,7 @@ export class AsignacionService {
           },
         },
         orderBy: {
-          reclamosAsignados: {
+          reclamos_asignados: {
             _count: 'asc',
           },
         },
@@ -78,9 +78,9 @@ export class AsignacionService {
   async obtenerCargaTecnicos(): Promise<any[]> {
     const tecnicos = await this.prisma.usuario.findMany({
       where: {
-        rol: Role.TECNICO,
-        estado: EstadoUsuario.ACTIVO,
-        deletedAt: null,
+        rol: RolUsuario.TECNICO,
+        activo: true,
+        deleted_at: null,
       },
       select: {
         id: true,
@@ -89,7 +89,7 @@ export class AsignacionService {
         email: true,
         _count: {
           select: {
-            reclamosAsignados: {
+            reclamos_asignados: {
               where: {
                 estado: {
                   in: [
@@ -102,7 +102,7 @@ export class AsignacionService {
             },
           },
         },
-        reclamosAsignados: {
+        reclamos_asignados: {
           where: {
             estado: {
               in: [
@@ -114,11 +114,11 @@ export class AsignacionService {
           },
           select: {
             id: true,
-            codigo: true,
+            numero_reclamo: true,
             titulo: true,
             estado: true,
             prioridad: true,
-            createdAt: true,
+            created_at: true,
           },
           take: 10,
           orderBy: {
@@ -132,8 +132,8 @@ export class AsignacionService {
       id: tecnico.id,
       nombre: `${tecnico.nombre} ${tecnico.apellido}`,
       email: tecnico.email,
-      reclamosActivos: tecnico._count.reclamosAsignados,
-      reclamos: tecnico.reclamosAsignados,
+      reclamosActivos: tecnico._count.reclamos_asignados,
+      reclamos: tecnico.reclamos_asignados,
     }));
   }
 
@@ -149,14 +149,14 @@ export class AsignacionService {
       where: { id: tecnicoId },
     });
 
-    if (!tecnico || tecnico.rol !== Role.TECNICO) {
+    if (!tecnico || tecnico.rol !== RolUsuario.TECNICO) {
       throw new NotFoundException('Técnico no encontrado');
     }
 
     // Obtener reclamos activos del técnico
     const reclamosActivos = await this.prisma.reclamo.findMany({
       where: {
-        tecnicoAsignadoId: tecnicoId,
+        id_tecnico_asignado: tecnicoId,
         estado: {
           in: [
             EstadoReclamo.ASIGNADO,
@@ -179,7 +179,7 @@ export class AsignacionService {
         where: { id: nuevoTecnicoId },
       });
 
-      if (!nuevoTecnico || nuevoTecnico.rol !== Role.TECNICO) {
+      if (!nuevoTecnico || nuevoTecnico.rol !== RolUsuario.TECNICO) {
         throw new NotFoundException('Nuevo técnico no encontrado');
       }
 
@@ -190,7 +190,7 @@ export class AsignacionService {
           },
         },
         data: {
-          tecnicoAsignadoId: nuevoTecnicoId,
+          id_tecnico_asignado: nuevoTecnicoId,
         },
       });
 
@@ -204,7 +204,7 @@ export class AsignacionService {
         if (nuevoTecnico) {
           await this.prisma.reclamo.update({
             where: { id: reclamo.id },
-            data: { tecnicoAsignadoId: nuevoTecnico },
+            data: { id_tecnico_asignado: nuevoTecnico },
           });
           contador++;
         }

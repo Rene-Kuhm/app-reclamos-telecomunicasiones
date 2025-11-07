@@ -44,6 +44,7 @@ class ReclamoModel with _$ReclamoModel {
       fechaResolucion: fechaResolucion,
       createdAt: createdAt,
       updatedAt: updatedAt,
+      numero: numero,
     );
   }
 
@@ -61,6 +62,7 @@ class ReclamoModel with _$ReclamoModel {
       fechaResolucion: entity.fechaResolucion,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
+      numero: entity.numero,
     );
   }
 }

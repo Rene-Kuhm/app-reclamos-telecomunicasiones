@@ -13,6 +13,7 @@ class Reclamo extends Equatable {
   final DateTime? fechaResolucion;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final String? numero;
 
   const Reclamo({
     required this.id,
@@ -26,6 +27,7 @@ class Reclamo extends Equatable {
     this.fechaResolucion,
     required this.createdAt,
     required this.updatedAt,
+    this.numero,
   });
 
   @override
@@ -41,6 +43,7 @@ class Reclamo extends Equatable {
         fechaResolucion,
         createdAt,
         updatedAt,
+        numero,
       ];
 
   /// Get estado display name
@@ -125,6 +128,7 @@ class Reclamo extends Equatable {
     DateTime? fechaResolucion,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? numero,
   }) {
     return Reclamo(
       id: id ?? this.id,
@@ -138,6 +142,7 @@ class Reclamo extends Equatable {
       fechaResolucion: fechaResolucion ?? this.fechaResolucion,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      numero: numero ?? this.numero,
     );
   }
 }

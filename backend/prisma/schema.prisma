@@ -1,9 +1,8 @@
 // Prisma Schema para Sistema de Reclamos Telco
-// Database: PostgreSQL 15+ (Supabase)
+// Database: SQLite (desarrollo) / PostgreSQL (producción)
 
 generator client {
   provider = "prisma-client-js"
-  previewFeatures = ["fullTextSearch", "fullTextIndex"]
 }
 
 datasource db {
@@ -12,87 +11,37 @@ datasource db {
 }
 
 // ============================================
-// ENUMS
-// ============================================
-
-enum RolUsuario {
-  PROFESIONAL   // Crea reclamos
-  TECNICO       // Resuelve reclamos
-  SUPERVISOR    // Supervisa y gestiona
-  ADMINISTRADOR // Acceso total
-}
-
-enum EstadoReclamo {
-  ABIERTO      // Recién creado
-  ASIGNADO     // Asignado a técnico
-  EN_CURSO     // Técnico trabajando
-  EN_REVISION  // Esperando aprobación
-  CERRADO      // Completado exitosamente
-  RECHAZADO    // Rechazado o cancelado
-}
-
-enum PrioridadReclamo {
-  BAJA
-  MEDIA
-  ALTA
-  URGENTE
-}
-
-enum CategoriaReclamo {
-  INTERNET_ADSL      // Internet por ADSL
-  INTERNET_FIBRA     // Internet por Fibra Óptica
-  TELEFONO_ADSL      // Teléfono fijo ADSL
-  TELEFONO_FIBRA     // Teléfono fijo Fibra
-  TV_SENSA          // TV por cable Sensa
-}
-
-enum TipoNotificacion {
-  EMAIL
-  TELEGRAM
-  PUSH
-  SMS
-}
-
-enum EstadoNotificacion {
-  PENDIENTE
-  ENVIADA
-  FALLIDA
-  ENTREGADA
-  LEIDA
-}
-
-// ============================================
 // MODELOS PRINCIPALES
 // ============================================
 
 model Usuario {
-  id                    String    @id @default(uuid()) @db.Uuid
-  email                 String    @unique @db.VarChar(255)
-  password_hash         String    @db.VarChar(255)
-  nombre                String    @db.VarChar(100)
-  apellido              String    @db.VarChar(100)
-  telefono              String?   @db.VarChar(20)
-  avatar_url            String?   @db.Text
+  id                    String    @id @default(uuid())
+  email                 String    @unique
+  password_hash         String
+  nombre                String
+  apellido              String
+  telefono              String?
+  avatar_url            String?
 
-  rol                   RolUsuario
+  // Rol: PROFESIONAL, TECNICO, SUPERVISOR, ADMINISTRADOR
+  rol                   String
   activo                Boolean   @default(true)
   email_verificado      Boolean   @default(false)
 
   // MFA (Multi-Factor Authentication)
   mfa_habilitado        Boolean   @default(false)
-  mfa_secret            String?   @db.VarChar(255)
+  mfa_secret            String?
 
   // Notificaciones
-  telegram_chat_id      String?   @db.VarChar(100)
-  onesignal_player_id   String?   @db.VarChar(255)
+  telegram_chat_id      String?
+  onesignal_player_id   String?
 
-  // Preferencias de notificación (JSON)
-  // Ejemplo: { "email": true, "telegram": true, "push": false, "horario": "08:00-18:00" }
-  preferencias_notif    Json?     @db.JsonB
+  // Preferencias de notificación (JSON string)
+  preferencias_notif    String?
 
   // Configuración regional
-  zona_horaria          String    @default("America/Argentina/Buenos_Aires") @db.VarChar(50)
-  idioma                String    @default("es") @db.VarChar(5)
+  zona_horaria          String    @default("America/Argentina/Buenos_Aires")
+  idioma                String    @default("es")
 
   // Seguridad
   intentos_fallidos     Int       @default(0)
@@ -121,16 +70,16 @@ model Usuario {
 }
 
 model RefreshToken {
-  id              String   @id @default(uuid()) @db.Uuid
-  token           String   @unique @db.VarChar(500)
-  usuario_id      String   @db.Uuid
+  id              String   @id @default(uuid())
+  token           String   @unique
+  usuario_id      String
   usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
   expires_at      DateTime
   revocado        Boolean  @default(false)
   revocado_at     DateTime?
-  ip_address      String?  @db.VarChar(45)
-  user_agent      String?  @db.Text
+  ip_address      String?
+  user_agent      String?
 
   created_at      DateTime @default(now())
 
@@ -141,15 +90,15 @@ model RefreshToken {
 }
 
 model Sesion {
-  id              String   @id @default(uuid()) @db.Uuid
-  usuario_id      String   @db.Uuid
+  id              String   @id @default(uuid())
+  usuario_id      String
   usuario         Usuario  @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
-  token           String   @unique @db.VarChar(500)
-  ip_address      String   @db.VarChar(45)
-  user_agent      String   @db.Text
-  dispositivo     String?  @db.VarChar(100)
-  ubicacion       String?  @db.VarChar(255)
+  token           String   @unique
+  ip_address      String
+  user_agent      String
+  dispositivo     String?
+  ubicacion       String?
 
   activa          Boolean  @default(true)
   ultimo_acceso   DateTime @default(now())
@@ -163,30 +112,32 @@ model Sesion {
 }
 
 model Reclamo {
-  id                      String           @id @default(uuid()) @db.Uuid
-  numero_reclamo          String           @unique @db.VarChar(20) // RCL-2024-00001
+  id                      String           @id @default(uuid())
+  numero_reclamo          String           @unique // RCL-2024-00001
 
-  titulo                  String           @db.VarChar(200)
-  descripcion             String           @db.Text
+  titulo                  String
+  descripcion             String
 
-  estado                  EstadoReclamo    @default(ABIERTO)
-  prioridad               PrioridadReclamo @default(MEDIA)
+  // Estado: ABIERTO, ASIGNADO, EN_CURSO, EN_REVISION, CERRADO, RECHAZADO
+  estado                  String           @default("ABIERTO")
+  // Prioridad: BAJA, MEDIA, ALTA, URGENTE
+  prioridad               String           @default("MEDIA")
 
-  // Categorías específicas de telecomunicaciones
-  categoria               CategoriaReclamo
-  subcategoria            String?          @db.VarChar(100)
+  // Categoría: INTERNET_ADSL, INTERNET_FIBRA, TELEFONO_ADSL, TELEFONO_FIBRA, TV_SENSA
+  categoria               String
+  subcategoria            String?
 
   // Ubicación del problema
-  direccion               String?          @db.Text
-  latitud                 Decimal?         @db.Decimal(10, 8)
-  longitud                Decimal?         @db.Decimal(11, 8)
+  direccion               String?
+  latitud                 Float?
+  longitud                Float?
 
   // Relaciones - Profesional que crea el reclamo
-  id_profesional          String           @db.Uuid
+  id_profesional          String
   profesional             Usuario          @relation("ReclamosProfesional", fields: [id_profesional], references: [id])
 
   // Técnico asignado (puede ser null si no está asignado aún)
-  id_tecnico_asignado     String?          @db.Uuid
+  id_tecnico_asignado     String?
   tecnico_asignado        Usuario?         @relation("ReclamosTecnico", fields: [id_tecnico_asignado], references: [id])
 
   // Fechas importantes del ciclo de vida
@@ -203,13 +154,12 @@ model Reclamo {
   sla_cumplido            Boolean?
 
   // Resolución
-  notas_resolucion        String?          @db.Text
+  notas_resolucion        String?
   calificacion            Int?             // 1-5 estrellas
-  comentario_calificacion String?          @db.Text
+  comentario_calificacion String?
 
-  // Metadata adicional (JSON flexible)
-  // Ejemplo: { "numero_cliente": "12345", "numero_linea": "351-1234567", "modem": "Huawei HG8245" }
-  metadata                Json?            @db.JsonB
+  // Metadata adicional (JSON string)
+  metadata                String?
 
   // Relaciones
   notificaciones          Notificacion[]
@@ -229,19 +179,18 @@ model Reclamo {
   @@index([fecha_creacion])
   @@index([sla_vencimiento])
   @@index([numero_reclamo])
-  @@fulltext([titulo, descripcion])
   @@map("reclamos")
 }
 
 model Comentario {
-  id              String   @id @default(uuid()) @db.Uuid
-  reclamo_id      String   @db.Uuid
+  id              String   @id @default(uuid())
+  reclamo_id      String
   reclamo         Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
 
-  usuario_id      String   @db.Uuid
+  usuario_id      String
   usuario         Usuario  @relation(fields: [usuario_id], references: [id])
 
-  contenido       String   @db.Text
+  contenido       String
   interno         Boolean  @default(false) // Si es interno (solo visible para técnicos/admins)
 
   created_at      DateTime @default(now())
@@ -254,20 +203,20 @@ model Comentario {
 }
 
 model Archivo {
-  id                String   @id @default(uuid()) @db.Uuid
-  reclamo_id        String   @db.Uuid
+  id                String   @id @default(uuid())
+  reclamo_id        String
   reclamo           Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
 
-  subido_por_id     String   @db.Uuid
+  subido_por_id     String
   subido_por        Usuario  @relation("ArchivoSubidoPor", fields: [subido_por_id], references: [id])
 
-  nombre_original   String   @db.VarChar(255)
-  nombre_almacenado String   @db.VarChar(255)
-  ruta              String   @db.Text
-  mime_type         String   @db.VarChar(100)
-  tamanio_bytes     BigInt
+  nombre_original   String
+  nombre_almacenado String
+  ruta              String
+  mime_type         String
+  tamanio_bytes     Int
 
-  hash_sha256       String   @db.VarChar(64) // Para verificar integridad
+  hash_sha256       String   // Para verificar integridad
 
   // Metadata de imagen (si aplica)
   ancho             Int?
@@ -281,33 +230,33 @@ model Archivo {
 }
 
 model Notificacion {
-  id                String              @id @default(uuid()) @db.Uuid
-  usuario_id        String              @db.Uuid
+  id                String              @id @default(uuid())
+  usuario_id        String
   usuario           Usuario             @relation(fields: [usuario_id], references: [id], onDelete: Cascade)
 
-  reclamo_id        String?             @db.Uuid
+  reclamo_id        String?
   reclamo           Reclamo?            @relation(fields: [reclamo_id], references: [id], onDelete: SetNull)
 
-  tipo              TipoNotificacion
-  estado            EstadoNotificacion  @default(PENDIENTE)
+  // Tipo: EMAIL, TELEGRAM, PUSH, SMS
+  tipo              String
+  // Estado: PENDIENTE, ENVIADA, FALLIDA, ENTREGADA, LEIDA
+  estado            String              @default("PENDIENTE")
 
-  titulo            String              @db.VarChar(200)
-  mensaje           String              @db.Text
+  titulo            String
+  mensaje           String
 
-  // Datos específicos por canal (JSON)
-  // Telegram: { "message_id": 123, "chat_id": 456 }
-  // Email: { "message_id": "abc@gmail.com", "subject": "..." }
-  datos_envio       Json?               @db.JsonB
+  // Datos específicos por canal (JSON string)
+  datos_envio       String?
 
   // Tracking
   intentos_envio    Int                 @default(0)
   enviada_at        DateTime?
   entregada_at      DateTime?
   leida_at          DateTime?
-  error_mensaje     String?             @db.Text
+  error_mensaje     String?
 
-  // Metadata
-  metadata          Json?               @db.JsonB
+  // Metadata (JSON string)
+  metadata          String?
 
   created_at        DateTime            @default(now())
 
@@ -320,25 +269,24 @@ model Notificacion {
 }
 
 model AuditoriaReclamo {
-  id                String   @id @default(uuid()) @db.Uuid
-  reclamo_id        String   @db.Uuid
+  id                String   @id @default(uuid())
+  reclamo_id        String
   reclamo           Reclamo  @relation(fields: [reclamo_id], references: [id], onDelete: Cascade)
 
-  usuario_id        String   @db.Uuid
+  usuario_id        String
   usuario           Usuario  @relation(fields: [usuario_id], references: [id])
 
-  accion            String   @db.VarChar(100) // 'CREADO', 'ASIGNADO', 'ESTADO_CAMBIADO', etc.
+  accion            String   // 'CREADO', 'ASIGNADO', 'ESTADO_CAMBIADO', etc.
 
-  estado_anterior   String?  @db.VarChar(50)
-  estado_nuevo      String?  @db.VarChar(50)
+  estado_anterior   String?
+  estado_nuevo      String?
 
-  // Campos cambiados (JSON)
-  // Ejemplo: { "prioridad": { "antes": "MEDIA", "despues": "ALTA" } }
-  campos_cambiados  Json?    @db.JsonB
-  notas             String?  @db.Text
+  // Campos cambiados (JSON string)
+  campos_cambiados  String?
+  notas             String?
 
-  ip_address        String?  @db.VarChar(45)
-  user_agent        String?  @db.Text
+  ip_address        String?
+  user_agent        String?
 
   created_at        DateTime @default(now())
 
@@ -353,10 +301,10 @@ model AuditoriaReclamo {
 // ============================================
 
 model Configuracion {
-  clave             String   @id @db.VarChar(100)
-  valor             Json     @db.JsonB
-  descripcion       String?  @db.Text
-  tipo              String   @db.VarChar(50) // 'string', 'number', 'boolean', 'json'
+  clave             String   @id
+  valor             String
+  descripcion       String?
+  tipo              String   // 'string', 'number', 'boolean', 'json'
 
   updated_at        DateTime @updatedAt
 
@@ -364,16 +312,16 @@ model Configuracion {
 }
 
 model PlantillaNotificacion {
-  id                String            @id @default(uuid()) @db.Uuid
-  codigo            String            @unique @db.VarChar(100)
-  nombre            String            @db.VarChar(200)
-  tipo              TipoNotificacion
+  id                String            @id @default(uuid())
+  codigo            String            @unique
+  nombre            String
+  tipo              String // EMAIL, TELEGRAM, PUSH, SMS
 
-  asunto            String?           @db.VarChar(200) // Para emails
-  contenido         String            @db.Text
+  asunto            String?           // Para emails
+  contenido         String
 
-  // Variables disponibles: {{nombre_usuario}}, {{numero_reclamo}}, etc.
-  variables         Json              @db.JsonB
+  // Variables disponibles (JSON string): {{nombre_usuario}}, {{numero_reclamo}}, etc.
+  variables         String
 
   activa            Boolean           @default(true)
 

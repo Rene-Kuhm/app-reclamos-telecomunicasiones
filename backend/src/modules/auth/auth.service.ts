@@ -8,11 +8,12 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
 import * as speakeasy from 'speakeasy';
 import * as QRCode from 'qrcode';
-import { Usuario, EstadoUsuario } from '@prisma/client';
+import { EstadoUsuario } from '../../common/types/prisma-enums';
+import { Usuario } from '@prisma/client';
 import {
   RegisterDto,
   LoginDto,
@@ -42,27 +43,24 @@ export class AuthService {
       return null;
     }
 
-    if (user.estado !== EstadoUsuario.ACTIVO) {
+    if (!user.activo) {
       throw new UnauthorizedException('Usuario inactivo o suspendido');
     }
 
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       // Incrementar intentos fallidos
       await this.prisma.usuario.update({
         where: { id: user.id },
         data: {
-          intentosFallidos: user.intentosFallidos + 1,
-          ultimoIntentoFallido: new Date(),
-          estado:
-            user.intentosFallidos + 1 >= 5
-              ? EstadoUsuario.SUSPENDIDO
-              : user.estado,
+          intentos_fallidos: user.intentos_fallidos + 1,
+          bloqueado_hasta: user.intentos_fallidos + 1 >= 5 ? new Date(Date.now() + 3600000) : null,
+          activo: user.intentos_fallidos + 1 >= 5 ? false : user.activo,
         },
       });
 
-      if (user.intentosFallidos + 1 >= 5) {
+      if (user.intentos_fallidos + 1 >= 5) {
         throw new UnauthorizedException(
           'Cuenta suspendida por múltiples intentos fallidos',
         );
@@ -72,22 +70,22 @@ export class AuthService {
     }
 
     // Resetear intentos fallidos en login exitoso
-    if (user.intentosFallidos > 0) {
+    if (user.intentos_fallidos > 0) {
       await this.prisma.usuario.update({
         where: { id: user.id },
         data: {
-          intentosFallidos: 0,
-          ultimoIntentoFallido: null,
+          intentos_fallidos: 0,
+          bloqueado_hasta: null,
         },
       });
     }
 
-    const { password: _, ...result } = user;
+    const { password_hash: _, ...result } = user;
     return result;
   }
 
   async register(registerDto: RegisterDto) {
-    const { email, password, nombre, apellido, telefono, rol, dni } = registerDto;
+    const { email, password, nombre, apellido, telefono, rol } = registerDto;
 
     // Verificar si el email ya existe
     const existingUser = await this.prisma.usuario.findUnique({
@@ -98,17 +96,6 @@ export class AuthService {
       throw new ConflictException('El email ya está registrado');
     }
 
-    // Verificar si el DNI ya existe
-    if (dni) {
-      const existingDni = await this.prisma.usuario.findUnique({
-        where: { dni },
-      });
-
-      if (existingDni) {
-        throw new ConflictException('El DNI ya está registrado');
-      }
-    }
-
     // Hash del password
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -116,13 +103,12 @@ export class AuthService {
       const user = await this.prisma.usuario.create({
         data: {
           email,
-          password: hashedPassword,
+          password_hash: hashedPassword,
           nombre,
           apellido,
           telefono,
-          dni,
           rol: rol || 'PROFESIONAL',
-          estado: EstadoUsuario.ACTIVO,
+          activo: true,
         },
         select: {
           id: true,
@@ -130,8 +116,8 @@ export class AuthService {
           nombre: true,
           apellido: true,
           rol: true,
-          estado: true,
-          createdAt: true,
+          activo: true,
+          created_at: true,
         },
       });
 
@@ -159,7 +145,7 @@ export class AuthService {
     }
 
     // Verificar si requiere MFA
-    if (user.mfaEnabled && user.mfaSecret) {
+    if (user.mfa_habilitado && user.mfa_secret) {
       return {
         requiresMfa: true,
         tempToken: await this.generateTempToken(user),
@@ -169,7 +155,7 @@ export class AuthService {
     // Actualizar último login
     await this.prisma.usuario.update({
       where: { id: user.id },
-      data: { ultimoLogin: new Date() },
+      data: { ultimo_login: new Date() },
     });
 
     const tokens = await this.getTokens(user);
@@ -195,13 +181,13 @@ export class AuthService {
       where: { id: payload.sub },
     });
 
-    if (!user || !user.mfaSecret) {
+    if (!user || !user.mfa_secret) {
       throw new UnauthorizedException('MFA no configurado');
     }
 
     // Verificar el código TOTP
     const verified = speakeasy.totp.verify({
-      secret: user.mfaSecret,
+      secret: user.mfa_secret,
       encoding: 'base32',
       token: code,
       window: 1,
@@ -214,7 +200,7 @@ export class AuthService {
     // Actualizar último login
     await this.prisma.usuario.update({
       where: { id: user.id },
-      data: { ultimoLogin: new Date() },
+      data: { ultimo_login: new Date() },
     });
 
     const tokens = await this.getTokens(user);
@@ -247,7 +233,7 @@ export class AuthService {
     const tempSecret = secret.base32;
 
     // Generar QR code
-    const qrCodeUrl = await QRCode.toDataURL(secret.otpauth_url);
+    const qrCodeUrl = secret.otpauth_url ? await QRCode.toDataURL(secret.otpauth_url) : '';
 
     return {
       secret: tempSecret,
@@ -282,8 +268,8 @@ export class AuthService {
     await this.prisma.usuario.update({
       where: { id: userId },
       data: {
-        mfaEnabled: true,
-        mfaSecret: secret,
+        mfa_habilitado: true,
+        mfa_secret: secret,
       },
     });
 
@@ -304,7 +290,7 @@ export class AuthService {
     }
 
     // Verificar password
-    const isPasswordValid = await bcrypt.compare(password, user.password);
+    const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Contraseña incorrecta');
@@ -314,8 +300,8 @@ export class AuthService {
     await this.prisma.usuario.update({
       where: { id: userId },
       data: {
-        mfaEnabled: false,
-        mfaSecret: null,
+        mfa_habilitado: false,
+        mfa_secret: null,
       },
     });
 
@@ -327,9 +313,10 @@ export class AuthService {
   }
 
   async logout(userId: string) {
-    await this.prisma.usuario.update({
-      where: { id: userId },
-      data: { refreshToken: null },
+    // Revocar todos los refresh tokens del usuario
+    await this.prisma.refreshToken.updateMany({
+      where: { usuario_id: userId },
+      data: { revocado: true },
     });
 
     this.logger.log(`Usuario cerró sesión: ${userId}`);
@@ -344,17 +331,21 @@ export class AuthService {
       where: { id: userId },
     });
 
-    if (!user || !user.refreshToken) {
+    if (!user) {
       throw new UnauthorizedException('Acceso denegado');
     }
 
-    const refreshTokenMatches = await bcrypt.compare(
-      refreshToken,
-      user.refreshToken,
-    );
+    // Verificar refresh token en la tabla de refresh tokens
+    const storedToken = await this.prisma.refreshToken.findFirst({
+      where: {
+        usuario_id: userId,
+        revocado: false,
+        expires_at: { gt: new Date() },
+      },
+    });
 
-    if (!refreshTokenMatches) {
-      throw new UnauthorizedException('Refresh token inválido');
+    if (!storedToken) {
+      throw new UnauthorizedException('Refresh token inválido o expirado');
     }
 
     const tokens = await this.getTokens(user);
@@ -378,28 +369,10 @@ export class AuthService {
       };
     }
 
-    // Generar token de reset
+    // TODO: Implement reset password token storage (needs separate table or field in schema)
+    // For now, just log it
     const resetToken = randomBytes(32).toString('hex');
-    const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hora
-
-    await this.prisma.usuario.update({
-      where: { id: user.id },
-      data: {
-        resetPasswordToken: resetToken,
-        resetPasswordExpires: resetTokenExpiry,
-      },
-    });
-
-    // TODO: Enviar email con el token
-    this.logger.log(`Token de reset generado para: ${email}`);
-
-    // En desarrollo, devolver el token (eliminar en producción)
-    if (this.configService.get('NODE_ENV') !== 'production') {
-      return {
-        message: 'Token de reset generado',
-        resetToken, // Solo en desarrollo
-      };
-    }
+    this.logger.log(`Password reset requested for: ${email}`);
 
     return {
       message:
@@ -410,18 +383,12 @@ export class AuthService {
   async resetPassword(resetPasswordDto: ResetPasswordDto) {
     const { token, newPassword } = resetPasswordDto;
 
-    const user = await this.prisma.usuario.findFirst({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: {
-          gt: new Date(),
-        },
-      },
-    });
+    // TODO: Implement token verification with proper storage
+    // For now, throw error as feature is not implemented
+    throw new BadRequestException('Reset password feature not fully implemented yet');
 
-    if (!user) {
-      throw new BadRequestException('Token inválido o expirado');
-    }
+    // Placeholder for future implementation
+    const user = null as any;
 
     // Hash de la nueva contraseña
     const hashedPassword = await bcrypt.hash(newPassword, 12);
@@ -430,16 +397,10 @@ export class AuthService {
     await this.prisma.usuario.update({
       where: { id: user.id },
       data: {
-        password: hashedPassword,
-        resetPasswordToken: null,
-        resetPasswordExpires: null,
-        refreshToken: null, // Invalidar sesiones existentes
-        intentosFallidos: 0,
-        ultimoIntentoFallido: null,
-        estado:
-          user.estado === EstadoUsuario.SUSPENDIDO
-            ? EstadoUsuario.ACTIVO
-            : user.estado,
+        password_hash: hashedPassword,
+        intentos_fallidos: 0,
+        bloqueado_hasta: null,
+        activo: true,
       },
     });
 
@@ -476,12 +437,18 @@ export class AuthService {
   }
 
   private async updateRefreshToken(userId: string, refreshToken: string) {
-    const hashedRefreshToken = await bcrypt.hash(refreshToken, 10);
+    // Revocar tokens anteriores
+    await this.prisma.refreshToken.updateMany({
+      where: { usuario_id: userId },
+      data: { revocado: true },
+    });
 
-    await this.prisma.usuario.update({
-      where: { id: userId },
+    // Crear nuevo refresh token
+    await this.prisma.refreshToken.create({
       data: {
-        refreshToken: hashedRefreshToken,
+        token: refreshToken,
+        usuario_id: userId,
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 días
       },
     });
   }

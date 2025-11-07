@@ -9,7 +9,14 @@ import {
   MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Role } from '@prisma/client';
+
+// Define RolUsuario inline to avoid import issues
+export enum RolUsuario {
+  PROFESIONAL = 'PROFESIONAL',
+  TECNICO = 'TECNICO',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMINISTRADOR = 'ADMINISTRADOR',
+}
 
 export class CreateUsuarioDto {
   @ApiProperty({
@@ -65,30 +72,12 @@ export class CreateUsuarioDto {
   telefono?: string;
 
   @ApiPropertyOptional({
-    description: 'DNI del usuario',
-    example: '12345678',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  dni?: string;
-
-  @ApiPropertyOptional({
-    description: 'Dirección del usuario',
-    example: 'Av. Principal 123',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  direccion?: string;
-
-  @ApiPropertyOptional({
     description: 'Rol del usuario',
-    enum: Role,
-    example: Role.PROFESIONAL,
-    default: Role.PROFESIONAL,
+    enum: RolUsuario,
+    example: RolUsuario.PROFESIONAL,
+    default: RolUsuario.PROFESIONAL,
   })
   @IsOptional()
-  @IsEnum(Role, { message: 'Rol inválido' })
-  rol?: Role;
+  @IsEnum(RolUsuario, { message: 'Rol inválido' })
+  rol?: string;
 }

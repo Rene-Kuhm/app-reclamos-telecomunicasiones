@@ -6,6 +6,7 @@ import '../models/create_reclamo_request.dart';
 import '../models/update_reclamo_request.dart';
 import '../models/comentario_model.dart';
 import '../models/archivo_model.dart';
+import '../models/reclamos_stats_model.dart';
 
 /// Reclamos remote data source
 class ReclamosRemoteDataSource {
@@ -18,6 +19,7 @@ class ReclamosRemoteDataSource {
     String? estado,
     String? categoria,
     String? prioridad,
+    String? search,
     int? page,
     int? limit,
   }) async {
@@ -26,6 +28,7 @@ class ReclamosRemoteDataSource {
     if (estado != null) queryParams['estado'] = estado;
     if (categoria != null) queryParams['categoria'] = categoria;
     if (prioridad != null) queryParams['prioridad'] = prioridad;
+    if (search != null) queryParams['search'] = search;
     if (page != null) queryParams['page'] = page;
     if (limit != null) queryParams['limit'] = limit;
 
@@ -137,5 +140,11 @@ class ReclamosRemoteDataSource {
         archivoId,
       ),
     );
+  }
+
+  /// Get reclamos statistics
+  Future<ReclamosStatsModel> getStats() async {
+    final response = await _dioClient.get(ApiEndpoints.reclamosStats);
+    return ReclamosStatsModel.fromJson(response.data['data'] ?? response.data);
   }
 }

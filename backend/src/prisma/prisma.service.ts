@@ -35,8 +35,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     // Log de queries en desarrollo
     if (process.env.NODE_ENV === 'development') {
-      // @ts-ignore
-      this.$on('query', (e) => {
+      this.$on('query' as never, (e: any) => {
         this.logger.debug(`Query: ${e.query}`);
         this.logger.debug(`Params: ${e.params}`);
         this.logger.debug(`Duration: ${e.duration}ms`);
@@ -44,14 +43,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
     }
 
     // Log de errores
-    // @ts-ignore
-    this.$on('error', (e) => {
+    this.$on('error' as never, (e: any) => {
       this.logger.error(`Error: ${e.message}`);
     });
 
     // Log de warnings
-    // @ts-ignore
-    this.$on('warn', (e) => {
+    this.$on('warn' as never, (e: any) => {
       this.logger.warn(`Warning: ${e.message}`);
     });
   }
@@ -99,7 +96,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
     return Promise.all(
       models.map((modelKey) => {
-        const model = this[modelKey as string];
+        const model = (this as any)[modelKey as string];
         if (model && typeof model.deleteMany === 'function') {
           return model.deleteMany();
         }

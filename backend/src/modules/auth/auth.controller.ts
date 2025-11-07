@@ -145,8 +145,8 @@ export class AuthController {
     description: 'Tokens actualizados correctamente',
   })
   async refreshTokens(@Request() req: RequestWithUser) {
-    const userId = req.user['sub'];
-    const refreshToken = req.user['refreshToken'];
+    const userId = req.user.id;
+    const refreshToken = (req.user as any).refreshToken;
     return this.authService.refreshTokens(userId, refreshToken);
   }
 
@@ -184,8 +184,7 @@ export class AuthController {
     description: 'Datos del usuario actual',
   })
   async getCurrentUser(@CurrentUser() user: Usuario) {
-    const { password, refreshToken, mfaSecret, ...userWithoutSensitive } =
-      user;
+    const { password_hash, mfa_secret, ...userWithoutSensitive } = user;
     return userWithoutSensitive;
   }
 }

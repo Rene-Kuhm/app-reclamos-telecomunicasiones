@@ -5,7 +5,7 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import {
   CreateReclamoDto,
   UpdateReclamoDto,
@@ -13,16 +13,19 @@ import {
   CerrarReclamoDto,
   RechazarReclamoDto,
 } from './dto';
-import {
-  EstadoReclamo,
-  PrioridadReclamo,
-  Role,
-  Prisma,
-  TipoAuditoria,
-} from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { EstadoReclamo, PrioridadReclamo } from '../../common/types/prisma-enums';
 import { WorkflowService } from './services/workflow.service';
 import { AsignacionService } from './services/asignacion.service';
 import { AuditoriaService } from './services/auditoria.service';
+
+// Define RolUsuario inline
+export enum RolUsuario {
+  PROFESIONAL = 'PROFESIONAL',
+  TECNICO = 'TECNICO',
+  SUPERVISOR = 'SUPERVISOR',
+  ADMINISTRADOR = 'ADMINISTRADOR',
+}
 
 @Injectable()
 export class ReclamosService {
@@ -36,33 +39,33 @@ export class ReclamosService {
   ) {}
 
   async create(createReclamoDto: CreateReclamoDto, usuarioId: string) {
-    // Generar código único del reclamo
-    const codigo = await this.generarCodigo();
+    // Generar número único del reclamo
+    const numero_reclamo = await this.generarNumeroReclamo();
 
     // Calcular prioridad si no se especifica
     const prioridad =
       createReclamoDto.prioridad ||
-      this.calcularPrioridadAutomatica(createReclamoDto.tipo);
+      this.calcularPrioridadAutomatica(createReclamoDto.categoria);
 
     // Calcular fecha límite basada en prioridad
-    const fechaLimite = this.workflowService.calculateSLA(prioridad);
+    const sla_vencimiento = this.workflowService.calculateSLA(prioridad);
 
     try {
       const reclamo = await this.prisma.reclamo.create({
         data: {
-          codigo,
+          numero_reclamo,
           titulo: createReclamoDto.titulo,
           descripcion: createReclamoDto.descripcion,
-          tipo: createReclamoDto.tipo,
-          tipoServicio: createReclamoDto.tipoServicio,
+          categoria: createReclamoDto.categoria,
+          subcategoria: createReclamoDto.subcategoria,
           prioridad,
           estado: EstadoReclamo.ABIERTO,
           direccion: createReclamoDto.direccion,
           latitud: createReclamoDto.latitud,
           longitud: createReclamoDto.longitud,
-          infoContacto: createReclamoDto.infoContacto as Prisma.InputJsonValue,
-          fechaLimite,
-          profesionalId: usuarioId,
+          metadata: (createReclamoDto as any).metadata ? JSON.stringify((createReclamoDto as any).metadata) : null,
+          sla_vencimiento,
+          id_profesional: usuarioId,
         },
         include: {
           profesional: {
@@ -81,16 +84,16 @@ export class ReclamosService {
       await this.auditoriaService.registrar(
         reclamo.id,
         usuarioId,
-        TipoAuditoria.CREACION,
+        'CREACION',
         'Reclamo creado',
         {
-          codigo: reclamo.codigo,
-          tipo: reclamo.tipo,
+          numero_reclamo: reclamo.numero_reclamo,
+          categoria: reclamo.categoria,
           prioridad: reclamo.prioridad,
         },
       );
 
-      this.logger.log(`Reclamo ${codigo} creado por usuario ${usuarioId}`);
+      this.logger.log(`Reclamo ${numero_reclamo} creado por usuario ${usuarioId}`);
 
       return this.formatearReclamo(reclamo);
     } catch (error) {
@@ -112,7 +115,7 @@ export class ReclamosService {
         skip,
         take,
         where,
-        orderBy: orderBy || { createdAt: 'desc' },
+        orderBy: orderBy || { created_at: 'desc' },
         include: {
           profesional: {
             select: {
@@ -122,7 +125,7 @@ export class ReclamosService {
               telefono: true,
             },
           },
-          tecnicoAsignado: {
+          tecnico_asignado: {
             select: {
               nombre: true,
               apellido: true,
@@ -150,12 +153,11 @@ export class ReclamosService {
 
   async findByFilters(
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
     filters?: {
-      estado?: EstadoReclamo;
-      prioridad?: PrioridadReclamo;
-      tipo?: string;
-      tipoServicio?: string;
+      estado?: string;
+      prioridad?: string;
+      categoria?: string;
       search?: string;
       fechaInicio?: Date;
       fechaFin?: Date;
@@ -167,8 +169,7 @@ export class ReclamosService {
     const {
       estado,
       prioridad,
-      tipo,
-      tipoServicio,
+      categoria,
       search,
       fechaInicio,
       fechaFin,
@@ -182,11 +183,10 @@ export class ReclamosService {
     const where: Prisma.ReclamoWhereInput = {
       ...(estado && { estado }),
       ...(prioridad && { prioridad }),
-      ...(tipo && { tipo }),
-      ...(tipoServicio && { tipoServicio }),
+      ...(categoria && { categoria }),
       ...(search && {
         OR: [
-          { codigo: { contains: search, mode: 'insensitive' } },
+          { numero_reclamo: { contains: search, mode: 'insensitive' } },
           { titulo: { contains: search, mode: 'insensitive' } },
           { descripcion: { contains: search, mode: 'insensitive' } },
         ],
@@ -195,21 +195,21 @@ export class ReclamosService {
 
     // Filtrar por fechas
     if (fechaInicio || fechaFin) {
-      where.createdAt = {};
+      where.created_at = {};
       if (fechaInicio) {
-        where.createdAt.gte = fechaInicio;
+        where.created_at.gte = fechaInicio;
       }
       if (fechaFin) {
-        where.createdAt.lte = fechaFin;
+        where.created_at.lte = fechaFin;
       }
     }
 
     // Filtrar según rol y preferencias del usuario
-    if (usuarioRol === Role.PROFESIONAL) {
-      where.profesionalId = usuarioId; // Solo ver sus propios reclamos
-    } else if (usuarioRol === Role.TECNICO) {
+    if (usuarioRol === RolUsuario.PROFESIONAL) {
+      where.id_profesional = usuarioId; // Solo ver sus propios reclamos
+    } else if (usuarioRol === RolUsuario.TECNICO) {
       if (soloMis) {
-        where.tecnicoAsignadoId = usuarioId; // Solo reclamos asignados
+        where.id_tecnico_asignado = usuarioId; // Solo reclamos asignados
       }
     }
     // Admin y Supervisor ven todo por defecto
@@ -228,7 +228,7 @@ export class ReclamosService {
     };
   }
 
-  async findOne(id: string, usuarioId: string, usuarioRol: Role) {
+  async findOne(id: string, usuarioId: string, usuarioRol: string) {
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id },
       include: {
@@ -239,10 +239,9 @@ export class ReclamosService {
             apellido: true,
             email: true,
             telefono: true,
-            direccion: true,
-          },
+            },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             id: true,
             nombre: true,
@@ -253,7 +252,7 @@ export class ReclamosService {
         },
         comentarios: {
           where:
-            usuarioRol === Role.PROFESIONAL
+            usuarioRol === RolUsuario.PROFESIONAL
               ? { interno: false }
               : undefined,
           include: {
@@ -266,13 +265,13 @@ export class ReclamosService {
             },
           },
           orderBy: {
-            createdAt: 'desc',
+            created_at: 'desc',
           },
           take: 10,
         },
         archivos: {
           orderBy: {
-            createdAt: 'desc',
+            created_at: 'desc',
           },
         },
         _count: {
@@ -299,7 +298,7 @@ export class ReclamosService {
     id: string,
     updateReclamoDto: UpdateReclamoDto,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id },
@@ -317,8 +316,8 @@ export class ReclamosService {
     const camposActualizados: string[] = [];
 
     Object.keys(updateReclamoDto).forEach((key) => {
-      if (reclamo[key] !== undefined && reclamo[key] !== updateReclamoDto[key]) {
-        valoresAnteriores[key] = reclamo[key];
+      if ((reclamo as any)[key] !== undefined && (reclamo as any)[key] !== (updateReclamoDto as any)[key]) {
+        valoresAnteriores[key] = (reclamo as any)[key];
         camposActualizados.push(key);
       }
     });
@@ -335,7 +334,7 @@ export class ReclamosService {
             email: true,
           },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             nombre: true,
             apellido: true,
@@ -369,7 +368,7 @@ export class ReclamosService {
       );
     }
 
-    this.logger.log(`Reclamo ${reclamo.codigo} actualizado por usuario ${usuarioId}`);
+    this.logger.log(`Reclamo ${reclamo.numero_reclamo} actualizado por usuario ${usuarioId}`);
 
     return this.formatearReclamo(reclamoActualizado);
   }
@@ -378,12 +377,12 @@ export class ReclamosService {
     id: string,
     asignarReclamoDto: AsignarReclamoDto,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id },
       include: {
-        tecnicoAsignado: true,
+        tecnico_asignado: true,
       },
     });
 
@@ -393,7 +392,7 @@ export class ReclamosService {
 
     // Solo admin, supervisor y técnicos pueden asignar
     if (
-      ![Role.ADMINISTRADOR, Role.SUPERVISOR, Role.TECNICO].includes(usuarioRol)
+      ![RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR, RolUsuario.TECNICO].includes(usuarioRol as RolUsuario)
     ) {
       throw new ForbiddenException(
         'No tienes permisos para asignar reclamos',
@@ -405,28 +404,28 @@ export class ReclamosService {
       where: { id: asignarReclamoDto.tecnicoId },
     });
 
-    if (!tecnico || tecnico.rol !== Role.TECNICO) {
+    if (!tecnico || tecnico.rol !== RolUsuario.TECNICO) {
       throw new BadRequestException('Técnico no válido');
     }
 
     // Validar transición de estado
     const nuevoEstado = EstadoReclamo.ASIGNADO;
-    this.workflowService.validateTransition(reclamo.estado, nuevoEstado);
+    this.workflowService.validateTransition(reclamo.estado as EstadoReclamo, nuevoEstado);
     this.workflowService.validateUserPermission(
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       nuevoEstado,
       usuarioRol,
     );
 
-    const tecnicoAnterior = reclamo.tecnicoAsignado;
+    const tecnicoAnterior = reclamo.tecnico_asignado;
 
     // Asignar técnico
     const reclamoActualizado = await this.prisma.reclamo.update({
       where: { id },
       data: {
-        tecnicoAsignadoId: asignarReclamoDto.tecnicoId,
+        id_tecnico_asignado: asignarReclamoDto.tecnicoId,
         estado: nuevoEstado,
-        notasInternas: asignarReclamoDto.notas,
+        notas_resolucion: asignarReclamoDto.notas,
       },
       include: {
         profesional: {
@@ -436,7 +435,7 @@ export class ReclamosService {
             email: true,
           },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             nombre: true,
             apellido: true,
@@ -472,12 +471,12 @@ export class ReclamosService {
     await this.auditoriaService.registrarCambioEstado(
       id,
       usuarioId,
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       nuevoEstado,
     );
 
     this.logger.log(
-      `Reclamo ${reclamo.codigo} asignado a técnico ${tecnico.email}`,
+      `Reclamo ${reclamo.numero_reclamo} asignado a técnico ${tecnico.email}`,
     );
 
     return this.formatearReclamo(reclamoActualizado);
@@ -487,7 +486,7 @@ export class ReclamosService {
     id: string,
     nuevoEstado: EstadoReclamo,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
     motivo?: string,
   ) {
     const reclamo = await this.prisma.reclamo.findUnique({
@@ -499,14 +498,14 @@ export class ReclamosService {
     }
 
     // Validar transición
-    this.workflowService.validateTransition(reclamo.estado, nuevoEstado);
+    this.workflowService.validateTransition(reclamo.estado as EstadoReclamo, nuevoEstado);
 
     // Verificar si es el técnico asignado
-    const esTecnicoAsignado = reclamo.tecnicoAsignadoId === usuarioId;
+    const esTecnicoAsignado = reclamo.id_tecnico_asignado === usuarioId;
 
     // Validar permisos
     this.workflowService.validateUserPermission(
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       nuevoEstado,
       usuarioRol,
       esTecnicoAsignado,
@@ -524,7 +523,7 @@ export class ReclamosService {
             email: true,
           },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             nombre: true,
             apellido: true,
@@ -538,13 +537,13 @@ export class ReclamosService {
     await this.auditoriaService.registrarCambioEstado(
       id,
       usuarioId,
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       nuevoEstado,
       motivo,
     );
 
     this.logger.log(
-      `Estado del reclamo ${reclamo.codigo} cambiado de ${reclamo.estado} a ${nuevoEstado}`,
+      `Estado del reclamo ${reclamo.numero_reclamo} cambiado de ${reclamo.estado} a ${nuevoEstado}`,
     );
 
     return this.formatearReclamo(reclamoActualizado);
@@ -554,7 +553,7 @@ export class ReclamosService {
     id: string,
     cerrarReclamoDto: CerrarReclamoDto,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id },
@@ -565,13 +564,13 @@ export class ReclamosService {
     }
 
     // Solo supervisor y admin pueden cerrar
-    if (![Role.ADMINISTRADOR, Role.SUPERVISOR].includes(usuarioRol)) {
+    if (![RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR].includes(usuarioRol as RolUsuario)) {
       throw new ForbiddenException('No tienes permisos para cerrar reclamos');
     }
 
     // Validar transición
     this.workflowService.validateTransition(
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       EstadoReclamo.CERRADO,
     );
 
@@ -580,9 +579,8 @@ export class ReclamosService {
       where: { id },
       data: {
         estado: EstadoReclamo.CERRADO,
-        solucion: cerrarReclamoDto.solucion,
-        notasFinales: cerrarReclamoDto.notasFinales,
-        fechaCierre: new Date(),
+        notas_resolucion: cerrarReclamoDto.solucion,
+        fecha_cierre: new Date(),
       },
       include: {
         profesional: {
@@ -592,7 +590,7 @@ export class ReclamosService {
             email: true,
           },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             nombre: true,
             apellido: true,
@@ -610,7 +608,7 @@ export class ReclamosService {
       cerrarReclamoDto.notasFinales,
     );
 
-    this.logger.log(`Reclamo ${reclamo.codigo} cerrado por usuario ${usuarioId}`);
+    this.logger.log(`Reclamo ${reclamo.numero_reclamo} cerrado por usuario ${usuarioId}`);
 
     return this.formatearReclamo(reclamoActualizado);
   }
@@ -619,7 +617,7 @@ export class ReclamosService {
     id: string,
     rechazarReclamoDto: RechazarReclamoDto,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id },
@@ -630,7 +628,7 @@ export class ReclamosService {
     }
 
     // Solo supervisor y admin pueden rechazar
-    if (![Role.ADMINISTRADOR, Role.SUPERVISOR].includes(usuarioRol)) {
+    if (![RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR].includes(usuarioRol as RolUsuario)) {
       throw new ForbiddenException(
         'No tienes permisos para rechazar reclamos',
       );
@@ -638,7 +636,7 @@ export class ReclamosService {
 
     // Validar transición
     this.workflowService.validateTransition(
-      reclamo.estado,
+      reclamo.estado as EstadoReclamo,
       EstadoReclamo.RECHAZADO,
     );
 
@@ -647,8 +645,8 @@ export class ReclamosService {
       where: { id },
       data: {
         estado: EstadoReclamo.RECHAZADO,
-        motivoRechazo: rechazarReclamoDto.motivoRechazo,
-        fechaCierre: new Date(),
+        notas_resolucion: rechazarReclamoDto.motivoRechazo,
+        fecha_cierre: new Date(),
       },
       include: {
         profesional: {
@@ -658,7 +656,7 @@ export class ReclamosService {
             email: true,
           },
         },
-        tecnicoAsignado: {
+        tecnico_asignado: {
           select: {
             nombre: true,
             apellido: true,
@@ -675,26 +673,26 @@ export class ReclamosService {
       rechazarReclamoDto.motivoRechazo,
     );
 
-    this.logger.log(`Reclamo ${reclamo.codigo} rechazado por usuario ${usuarioId}`);
+    this.logger.log(`Reclamo ${reclamo.numero_reclamo} rechazado por usuario ${usuarioId}`);
 
     return this.formatearReclamo(reclamoActualizado);
   }
 
-  async getStats(usuarioId?: string, usuarioRol?: Role) {
+  async getStats(usuarioId?: string, usuarioRol?: string) {
     const where: Prisma.ReclamoWhereInput = {};
 
     // Filtrar según rol
-    if (usuarioRol === Role.PROFESIONAL && usuarioId) {
-      where.profesionalId = usuarioId;
-    } else if (usuarioRol === Role.TECNICO && usuarioId) {
-      where.tecnicoAsignadoId = usuarioId;
+    if (usuarioRol === RolUsuario.PROFESIONAL && usuarioId) {
+      where.id_profesional = usuarioId;
+    } else if (usuarioRol === RolUsuario.TECNICO && usuarioId) {
+      where.id_tecnico_asignado = usuarioId;
     }
 
     const [
       totalReclamos,
       reclamosPorEstado,
       reclamosPorPrioridad,
-      reclamosPorTipo,
+      reclamosPorCategoria,
       reclamosVencidos,
       promedioResolucion,
     ] = await Promise.all([
@@ -710,14 +708,14 @@ export class ReclamosService {
         _count: true,
       }),
       this.prisma.reclamo.groupBy({
-        by: ['tipo'],
+        by: ['categoria'],
         where,
         _count: true,
       }),
       this.prisma.reclamo.count({
         where: {
           ...where,
-          fechaLimite: {
+          sla_vencimiento: {
             lt: new Date(),
           },
           estado: {
@@ -725,17 +723,8 @@ export class ReclamosService {
           },
         },
       }),
-      this.prisma.reclamo.aggregate({
-        where: {
-          ...where,
-          estado: EstadoReclamo.CERRADO,
-          fechaCierre: { not: null },
-        },
-        _avg: {
-          // Calcular días promedio de resolución
-          // Nota: Esto es una aproximación, idealmente usarías una función SQL
-        },
-      }),
+      // Promedio de resolución - simplemente retornar null por ahora
+      Promise.resolve(null),
     ]);
 
     return {
@@ -743,21 +732,21 @@ export class ReclamosService {
       reclamosPorEstado: reclamosPorEstado.reduce((acc, curr) => {
         acc[curr.estado] = curr._count;
         return acc;
-      }, {}),
+      }, {} as Record<string, number>),
       reclamosPorPrioridad: reclamosPorPrioridad.reduce((acc, curr) => {
         acc[curr.prioridad] = curr._count;
         return acc;
-      }, {}),
-      reclamosPorTipo: reclamosPorTipo.reduce((acc, curr) => {
-        acc[curr.tipo] = curr._count;
+      }, {} as Record<string, number>),
+      reclamosPorCategoria: reclamosPorCategoria.reduce((acc, curr) => {
+        acc[curr.categoria] = curr._count;
         return acc;
-      }, {}),
+      }, {} as Record<string, number>),
       reclamosVencidos,
     };
   }
 
   // Métodos auxiliares privados
-  private async generarCodigo(): Promise<string> {
+  private async generarNumeroReclamo(): Promise<string> {
     const fecha = new Date();
     const year = fecha.getFullYear().toString().slice(-2);
     const month = (fecha.getMonth() + 1).toString().padStart(2, '0');
@@ -765,7 +754,7 @@ export class ReclamosService {
     // Contar reclamos del mes actual
     const count = await this.prisma.reclamo.count({
       where: {
-        createdAt: {
+        created_at: {
           gte: new Date(fecha.getFullYear(), fecha.getMonth(), 1),
         },
       },
@@ -778,7 +767,7 @@ export class ReclamosService {
 
   private calcularPrioridadAutomatica(tipo: string): PrioridadReclamo {
     // Lógica para calcular prioridad basada en tipo
-    const prioridadesPorTipo = {
+    const prioridadesPorTipo: Record<string, PrioridadReclamo> = {
       TECNICO: PrioridadReclamo.ALTA,
       FACTURACION: PrioridadReclamo.MEDIA,
       SERVICIO_CLIENTE: PrioridadReclamo.MEDIA,
@@ -792,22 +781,22 @@ export class ReclamosService {
   private verificarPermisoAcceso(
     reclamo: any,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
-    if (usuarioRol === Role.ADMINISTRADOR || usuarioRol === Role.SUPERVISOR) {
+    if (usuarioRol === RolUsuario.ADMINISTRADOR || usuarioRol === RolUsuario.SUPERVISOR) {
       return; // Admin y supervisor pueden ver todo
     }
 
     if (
-      usuarioRol === Role.PROFESIONAL &&
-      reclamo.profesionalId !== usuarioId
+      usuarioRol === RolUsuario.PROFESIONAL &&
+      reclamo.id_profesional !== usuarioId
     ) {
       throw new ForbiddenException('No tienes acceso a este reclamo');
     }
 
     if (
-      usuarioRol === Role.TECNICO &&
-      reclamo.tecnicoAsignadoId !== usuarioId
+      usuarioRol === RolUsuario.TECNICO &&
+      reclamo.id_tecnico_asignado !== usuarioId
     ) {
       throw new ForbiddenException('No tienes acceso a este reclamo');
     }
@@ -816,15 +805,15 @@ export class ReclamosService {
   private verificarPermisoModificacion(
     reclamo: any,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
   ) {
-    if (usuarioRol === Role.ADMINISTRADOR || usuarioRol === Role.SUPERVISOR) {
+    if (usuarioRol === RolUsuario.ADMINISTRADOR || usuarioRol === RolUsuario.SUPERVISOR) {
       return; // Admin y supervisor pueden modificar todo
     }
 
-    if (usuarioRol === Role.PROFESIONAL) {
+    if (usuarioRol === RolUsuario.PROFESIONAL) {
       // El profesional solo puede modificar si es su reclamo y está ABIERTO
-      if (reclamo.profesionalId !== usuarioId) {
+      if (reclamo.id_profesional !== usuarioId) {
         throw new ForbiddenException('No tienes acceso a este reclamo');
       }
       if (reclamo.estado !== EstadoReclamo.ABIERTO) {
@@ -834,9 +823,9 @@ export class ReclamosService {
       }
     }
 
-    if (usuarioRol === Role.TECNICO) {
+    if (usuarioRol === RolUsuario.TECNICO) {
       // El técnico solo puede modificar si está asignado
-      if (reclamo.tecnicoAsignadoId !== usuarioId) {
+      if (reclamo.id_tecnico_asignado !== usuarioId) {
         throw new ForbiddenException('No estás asignado a este reclamo');
       }
     }
@@ -852,15 +841,15 @@ export class ReclamosService {
             telefono: reclamo.profesional.telefono,
           }
         : null,
-      tecnicoAsignado: reclamo.tecnicoAsignado
+      tecnico_asignado: reclamo.tecnico_asignado
         ? {
-            nombre: `${reclamo.tecnicoAsignado.nombre} ${reclamo.tecnicoAsignado.apellido}`,
-            email: reclamo.tecnicoAsignado.email,
-            telefono: reclamo.tecnicoAsignado.telefono,
+            nombre: `${reclamo.tecnico_asignado.nombre} ${reclamo.tecnico_asignado.apellido}`,
+            email: reclamo.tecnico_asignado.email,
+            telefono: reclamo.tecnico_asignado.telefono,
           }
         : null,
-      estadoVencido: this.workflowService.isOverdue(reclamo.fechaLimite),
-      horasRestantes: this.workflowService.getTimeRemaining(reclamo.fechaLimite),
+      estadoVencido: this.workflowService.isOverdue(reclamo.sla_vencimiento),
+      horasRestantes: this.workflowService.getTimeRemaining(reclamo.sla_vencimiento),
     };
   }
 }

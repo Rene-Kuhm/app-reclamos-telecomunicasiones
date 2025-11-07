@@ -103,13 +103,13 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                       ListTile(
                         leading: const Icon(Icons.phone),
                         title: const Text('Teléfono'),
-                        subtitle: Text(user.telefono),
+                        subtitle: Text(user.telefono ?? 'No especificado'),
                       ),
                       const Divider(height: 1),
                       ListTile(
                         leading: const Icon(Icons.home),
                         title: const Text('Dirección'),
-                        subtitle: Text(user.direccion),
+                        subtitle: Text(user.direccion ?? 'No especificada'),
                       ),
                       if (user.dni != null) ...[
                         const Divider(height: 1),
@@ -140,6 +140,13 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                         title: const Text('Cambiar contraseña'),
                         trailing: const Icon(Icons.chevron_right),
                         onTap: () => context.push('/perfil/change-password'),
+                      ),
+                      const Divider(height: 1),
+                      ListTile(
+                        leading: const Icon(Icons.settings),
+                        title: const Text('Configuración'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => context.push('/perfil/settings'),
                       ),
                     ],
                   ),

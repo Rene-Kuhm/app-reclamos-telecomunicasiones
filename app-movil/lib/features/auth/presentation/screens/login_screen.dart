@@ -34,19 +34,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           password: _passwordController.text,
         );
 
-    if (mounted) {
-      if (success) {
-        context.go('/home');
-      } else {
-        final error = ref.read(authProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(error ?? 'Error al iniciar sesión'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+    if (mounted && !success) {
+      final error = ref.read(authProvider).error;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error ?? 'Error al iniciar sesión'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
+    // No need to manually navigate - the router will automatically redirect
+    // to /home when authState.isAuthenticated becomes true
   }
 
   @override
@@ -154,14 +152,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   TextButton(
                     onPressed: authState.isLoading
                         ? null
-                        : () {
-                            // TODO: Implement forgot password
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Funcionalidad próximamente'),
-                              ),
-                            );
-                          },
+                        : () => context.push('/forgot-password'),
                     child: Text(
                       '¿Olvidaste tu contraseña?',
                       style: TextStyle(color: Colors.grey[600]),

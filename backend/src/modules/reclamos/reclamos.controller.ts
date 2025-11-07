@@ -48,7 +48,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Usuario, Role, EstadoReclamo, PrioridadReclamo } from '@prisma/client';
+import { RolUsuario, EstadoReclamo, PrioridadReclamo } from '../../common/types/prisma-enums';
+import { Usuario } from '@prisma/client';
 
 @ApiTags('Reclamos')
 @Controller('reclamos')
@@ -89,14 +90,9 @@ export class ReclamosController {
     description: 'Filtrar por prioridad',
   })
   @ApiQuery({
-    name: 'tipo',
+    name: 'categoria',
     required: false,
-    description: 'Filtrar por tipo de reclamo',
-  })
-  @ApiQuery({
-    name: 'tipoServicio',
-    required: false,
-    description: 'Filtrar por tipo de servicio',
+    description: 'Filtrar por categoría de reclamo',
   })
   @ApiQuery({
     name: 'search',
@@ -136,8 +132,7 @@ export class ReclamosController {
     @CurrentUser() user: Usuario,
     @Query('estado') estado?: EstadoReclamo,
     @Query('prioridad') prioridad?: PrioridadReclamo,
-    @Query('tipo') tipo?: string,
-    @Query('tipoServicio') tipoServicio?: string,
+    @Query('categoria') categoria?: string,
     @Query('search') search?: string,
     @Query('fechaInicio') fechaInicio?: string,
     @Query('fechaFin') fechaFin?: string,
@@ -145,18 +140,19 @@ export class ReclamosController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.reclamosService.findByFilters(user.id, user.rol, {
-      estado,
-      prioridad,
-      tipo,
-      tipoServicio,
-      search,
+    const filters = {
+      estado: estado,
+      prioridad: prioridad,
+      categoria: categoria,
+      search: search,
       fechaInicio: fechaInicio ? new Date(fechaInicio) : undefined,
       fechaFin: fechaFin ? new Date(fechaFin) : undefined,
       soloMis: soloMis === 'true',
       page: page ? parseInt(page) : 1,
       limit: limit ? parseInt(limit) : 10,
-    });
+    };
+
+    return this.reclamosService.findByFilters(user.id, user.rol, filters);
   }
 
   @Get('stats')
@@ -167,7 +163,7 @@ export class ReclamosController {
   }
 
   @Get('tecnicos/carga')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Obtener carga de trabajo de técnicos' })
   @ApiResponse({
     status: 200,
@@ -207,7 +203,7 @@ export class ReclamosController {
   }
 
   @Post(':id/asignar')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR, Role.TECNICO)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR, RolUsuario.TECNICO)
   @ApiOperation({ summary: 'Asignar técnico a reclamo' })
   @ApiParam({ name: 'id', description: 'UUID del reclamo' })
   @ApiResponse({ status: 200, description: 'Técnico asignado correctamente' })
@@ -250,7 +246,7 @@ export class ReclamosController {
   }
 
   @Post(':id/cerrar')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Cerrar reclamo' })
   @ApiParam({ name: 'id', description: 'UUID del reclamo' })
   @ApiResponse({ status: 200, description: 'Reclamo cerrado correctamente' })
@@ -263,7 +259,7 @@ export class ReclamosController {
   }
 
   @Post(':id/rechazar')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Rechazar reclamo' })
   @ApiParam({ name: 'id', description: 'UUID del reclamo' })
   @ApiResponse({ status: 200, description: 'Reclamo rechazado correctamente' })
@@ -423,7 +419,7 @@ export class ReclamosController {
 
   @Delete('archivos/:archivoId')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Eliminar archivo' }}
+  @ApiOperation({ summary: 'Eliminar archivo' })
   @ApiParam({ name: 'archivoId', description: 'UUID del archivo' })
   @ApiResponse({ status: 200, description: 'Archivo eliminado correctamente' })
   async deleteArchivo(
@@ -435,7 +431,7 @@ export class ReclamosController {
 
   // AUDITORÍA
   @Get(':id/auditoria')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR, Role.TECNICO)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR, RolUsuario.TECNICO)
   @ApiOperation({ summary: 'Obtener historial de auditoría de un reclamo' })
   @ApiParam({ name: 'id', description: 'UUID del reclamo' })
   @ApiResponse({ status: 200, description: 'Historial de auditoría' })
@@ -445,7 +441,7 @@ export class ReclamosController {
 
   // RECOMENDACIÓN DE TÉCNICO
   @Get(':id/recomendar-tecnico')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Obtener recomendación de técnico para asignar' })
   @ApiParam({ name: 'id', description: 'UUID del reclamo' })
   @ApiResponse({ status: 200, description: 'Técnico recomendado' })

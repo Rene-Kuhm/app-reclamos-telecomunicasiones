@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ReclamosService } from './reclamos.service';
 import { ReclamosController } from './reclamos.controller';
-import { PrismaModule } from '../prisma/prisma.module';
+import { PrismaModule } from '../../prisma/prisma.module';
 import { WorkflowService } from './services/workflow.service';
 import { AsignacionService } from './services/asignacion.service';
 import { AuditoriaService } from './services/auditoria.service';

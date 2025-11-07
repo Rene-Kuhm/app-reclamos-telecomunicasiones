@@ -148,4 +148,9 @@ class DateFormatter {
       return 'Buenas noches';
     }
   }
+
+  /// Format relative date (alias for getRelativeTime)
+  static String formatRelative(DateTime date) {
+    return getRelativeTime(date);
+  }
 }

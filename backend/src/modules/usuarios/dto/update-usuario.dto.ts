@@ -7,7 +7,7 @@ import {
   IsBoolean,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { Role, EstadoUsuario } from '@prisma/client';
+import { RolUsuario } from './create-usuario.dto';
 
 export class UpdateUsuarioDto {
   @ApiPropertyOptional({
@@ -46,48 +46,21 @@ export class UpdateUsuarioDto {
   telefono?: string;
 
   @ApiPropertyOptional({
-    description: 'DNI del usuario',
-    example: '12345678',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(20)
-  dni?: string;
-
-  @ApiPropertyOptional({
-    description: 'Dirección del usuario',
-    example: 'Av. Principal 123',
-  })
-  @IsOptional()
-  @IsString()
-  @MaxLength(255)
-  direccion?: string;
-
-  @ApiPropertyOptional({
     description: 'Rol del usuario',
-    enum: Role,
-    example: Role.PROFESIONAL,
+    enum: RolUsuario,
+    example: RolUsuario.PROFESIONAL,
   })
   @IsOptional()
-  @IsEnum(Role, { message: 'Rol inválido' })
-  rol?: Role;
+  @IsEnum(RolUsuario, { message: 'Rol inválido' })
+  rol?: string;
 
   @ApiPropertyOptional({
-    description: 'Estado del usuario',
-    enum: EstadoUsuario,
-    example: EstadoUsuario.ACTIVO,
-  })
-  @IsOptional()
-  @IsEnum(EstadoUsuario, { message: 'Estado inválido' })
-  estado?: EstadoUsuario;
-
-  @ApiPropertyOptional({
-    description: 'Notificaciones habilitadas',
+    description: 'Usuario activo',
     example: true,
   })
   @IsOptional()
   @IsBoolean()
-  notificacionesEnabled?: boolean;
+  activo?: boolean;
 }
 
 export class UpdatePasswordDto {

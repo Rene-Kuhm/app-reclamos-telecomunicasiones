@@ -22,14 +22,15 @@ class UserModel with _$UserModel {
   const factory UserModel({
     required String id,
     required String nombre,
+    String? apellido,
     required String email,
-    required String telefono,
-    required String direccion,
+    String? telefono,
+    String? direccion,
     String? dni,
     required RolUsuario rol,
     @Default(true) bool activo,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
   }) = _UserModel;
 
   factory UserModel.fromJson(Map<String, dynamic> json) =>
@@ -40,6 +41,7 @@ class UserModel with _$UserModel {
     return User(
       id: id,
       nombre: nombre,
+      apellido: apellido,
       email: email,
       telefono: telefono,
       direccion: direccion,
@@ -56,6 +58,7 @@ class UserModel with _$UserModel {
     return UserModel(
       id: user.id,
       nombre: user.nombre,
+      apellido: user.apellido,
       email: user.email,
       telefono: user.telefono,
       direccion: user.direccion,

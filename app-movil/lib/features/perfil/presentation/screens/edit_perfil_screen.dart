@@ -78,8 +78,8 @@ class _EditPerfilScreenState extends ConsumerState<EditPerfilScreen> {
 
     if (user != null && !_isInitialized) {
       _nombreController.text = user.nombre;
-      _telefonoController.text = user.telefono;
-      _direccionController.text = user.direccion;
+      _telefonoController.text = user.telefono ?? '';
+      _direccionController.text = user.direccion ?? '';
       _dniController.text = user.dni ?? '';
       _isInitialized = true;
     }

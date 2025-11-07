@@ -62,19 +62,19 @@ export class EmailProvider {
   }
 
   private generarSubject(plantilla: string, datos: any): string {
-    const subjects = {
+    const subjects: Record<string, string> = {
       'reclamo-creado': `Reclamo ${datos.codigo} creado`,
       'reclamo-asignado': `Reclamo ${datos.codigo} asignado`,
       'reclamo-cerrado': `Reclamo ${datos.codigo} cerrado`,
       'reclamo-comentario': `Nuevo comentario en reclamo ${datos.codigo}`,
     };
 
-    return subjects[plantilla] || 'Notificación del sistema';
+    return (subjects as Record<string, string>)[plantilla] || 'Notificación del sistema';
   }
 
   private generarHTML(plantilla: string, datos: any): string {
     // TODO: Usar un motor de plantillas real
-    const plantillas = {
+    const plantillas: Record<string, string> = {
       'reclamo-creado': `
         <h2>Reclamo Creado</h2>
         <p>Se ha creado un nuevo reclamo con el código <strong>${datos.codigo}</strong>.</p>
@@ -96,7 +96,7 @@ export class EmailProvider {
     };
 
     return (
-      plantillas[plantilla] ||
+      (plantillas as Record<string, string>)[plantilla] ||
       `<p>Tienes una nueva notificación del sistema.</p>`
     );
   }

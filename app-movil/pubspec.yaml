@@ -43,6 +43,8 @@ dependencies:
   # File Picker
   file_picker: ^6.1.1
   image_picker: ^1.0.7
+  url_launcher: ^6.2.5
+  badges: ^3.1.2
 
   # Utils
   equatable: ^2.0.5

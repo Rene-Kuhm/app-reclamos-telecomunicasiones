@@ -1,6 +1,9 @@
 import 'package:dio/dio.dart';
 import 'package:equatable/equatable.dart';
 
+/// Type alias for backward compatibility
+typedef ApiError = ApiException;
+
 /// Custom API exception class
 class ApiException implements Exception {
   final String message;

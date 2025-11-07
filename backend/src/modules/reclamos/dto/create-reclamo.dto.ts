@@ -9,7 +9,7 @@ import {
   IsObject,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { TipoReclamo, PrioridadReclamo, TipoServicio } from '@prisma/client';
+import { PrioridadReclamo, CategoriaReclamo } from '../../../common/types/prisma-enums';
 
 export class CreateReclamoDto {
   @ApiProperty({
@@ -32,22 +32,22 @@ export class CreateReclamoDto {
   descripcion: string;
 
   @ApiProperty({
-    description: 'Tipo de reclamo',
-    enum: TipoReclamo,
-    example: TipoReclamo.TECNICO,
+    description: 'Categoría del reclamo',
+    enum: CategoriaReclamo,
+    example: CategoriaReclamo.INTERNET_FIBRA,
   })
-  @IsEnum(TipoReclamo, { message: 'Tipo de reclamo inválido' })
+  @IsEnum(CategoriaReclamo, { message: 'Categoría de reclamo inválida' })
   @IsNotEmpty()
-  tipo: TipoReclamo;
+  categoria: string;
 
-  @ApiProperty({
-    description: 'Tipo de servicio afectado',
-    enum: TipoServicio,
-    example: TipoServicio.INTERNET_FIBRA,
+  @ApiPropertyOptional({
+    description: 'Subcategoría del reclamo (opcional)',
+    example: 'Sin señal',
   })
-  @IsEnum(TipoServicio, { message: 'Tipo de servicio inválido' })
-  @IsNotEmpty()
-  tipoServicio: TipoServicio;
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  subcategoria?: string;
 
   @ApiPropertyOptional({
     description: 'Prioridad del reclamo (asignada automáticamente si no se especifica)',
@@ -56,7 +56,7 @@ export class CreateReclamoDto {
   })
   @IsOptional()
   @IsEnum(PrioridadReclamo, { message: 'Prioridad inválida' })
-  prioridad?: PrioridadReclamo;
+  prioridad?: string;
 
   @ApiPropertyOptional({
     description: 'Dirección del problema',

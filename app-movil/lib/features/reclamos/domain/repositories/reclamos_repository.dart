@@ -3,6 +3,7 @@ import '../../../../core/network/api_error.dart';
 import '../entities/reclamo.dart';
 import '../../data/models/comentario_model.dart';
 import '../../data/models/archivo_model.dart';
+import '../../data/models/reclamos_stats_model.dart';
 
 /// Reclamos repository interface
 abstract class ReclamosRepository {
@@ -11,6 +12,7 @@ abstract class ReclamosRepository {
     String? estado,
     String? categoria,
     String? prioridad,
+    String? search,
     int? page,
     int? limit,
   });
@@ -63,4 +65,7 @@ abstract class ReclamosRepository {
     required String reclamoId,
     required String archivoId,
   });
+
+  /// Get reclamos statistics
+  Future<Either<ApiError, ReclamosStatsModel>> getStats();
 }

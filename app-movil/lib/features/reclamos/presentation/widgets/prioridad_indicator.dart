@@ -15,25 +15,38 @@ class PrioridadIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     final config = _getPrioridadConfig(prioridad);
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          config.icon,
-          size: 16,
-          color: config.color,
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: config.color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: config.color.withOpacity(0.3),
+          width: 1,
         ),
-        if (showLabel) ...[
-          const SizedBox(width: 4),
-          Text(
-            config.label,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: config.color,
-                  fontWeight: FontWeight.w600,
-                ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            config.icon,
+            size: 14,
+            color: config.color,
           ),
+          if (showLabel) ...[
+            const SizedBox(width: 5),
+            Text(
+              config.label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: config.color,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    letterSpacing: 0.2,
+                  ),
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 

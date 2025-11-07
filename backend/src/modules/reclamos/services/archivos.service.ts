@@ -4,7 +4,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -82,13 +82,14 @@ export class ArchivosService {
     // Guardar en base de datos
     const archivo = await this.prisma.archivo.create({
       data: {
-        reclamoId,
-        nombre: file.originalname,
-        nombreArchivo: file.filename,
+        reclamo_id: reclamoId,
+        nombre_original: file.originalname,
+        nombre_almacenado: file.filename,
         ruta: file.path,
-        tipo: file.mimetype,
-        tamano: file.size,
-        uploadedBy: usuarioId,
+        mime_type: file.mimetype,
+        tamanio_bytes: file.size,
+        subido_por_id: usuarioId,
+        hash_sha256: '', // TODO: Calculate actual hash
       },
     });
 
@@ -98,11 +99,11 @@ export class ArchivosService {
 
     return {
       id: archivo.id,
-      nombre: archivo.nombre,
-      tipo: archivo.tipo,
-      tamano: archivo.tamano,
+      nombre: archivo.nombre_original,
+      tipo: archivo.mime_type,
+      tamano: archivo.tamanio_bytes,
       url: `/api/archivos/${archivo.id}`,
-      uploadedAt: archivo.createdAt,
+      uploadedAt: archivo.created_at,
     };
   }
 
@@ -117,9 +118,9 @@ export class ArchivosService {
     }
 
     const archivos = await this.prisma.archivo.findMany({
-      where: { reclamoId },
+      where: { reclamo_id: reclamoId },
       include: {
-        usuario: {
+        subido_por: {
           select: {
             nombre: true,
             apellido: true,
@@ -128,21 +129,21 @@ export class ArchivosService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
     return archivos.map((archivo) => ({
       id: archivo.id,
-      nombre: archivo.nombre,
-      tipo: archivo.tipo,
-      tamano: archivo.tamano,
+      nombre: archivo.nombre_original,
+      tipo: archivo.mime_type,
+      tamano: archivo.tamanio_bytes,
       url: `/api/archivos/${archivo.id}`,
       uploadedBy: {
-        nombre: `${archivo.usuario.nombre} ${archivo.usuario.apellido}`,
-        rol: archivo.usuario.rol,
+        nombre: `${archivo.subido_por.nombre} ${archivo.subido_por.apellido}`,
+        rol: archivo.subido_por.rol,
       },
-      uploadedAt: archivo.createdAt,
+      uploadedAt: archivo.created_at,
     }));
   }
 
@@ -158,15 +159,15 @@ export class ArchivosService {
     // Verificar que el archivo existe en disco
     if (!fs.existsSync(archivo.ruta)) {
       this.logger.error(
-        `Archivo ${archivo.nombre} no encontrado en disco: ${archivo.ruta}`,
+        `Archivo ${archivo.nombre_original} no encontrado en disco: ${archivo.ruta}`,
       );
       throw new NotFoundException('Archivo no encontrado en el sistema');
     }
 
     return {
       path: archivo.ruta,
-      nombre: archivo.nombre,
-      tipo: archivo.tipo,
+      nombre: archivo.nombre_original,
+      tipo: archivo.mime_type,
     };
   }
 
@@ -194,7 +195,7 @@ export class ArchivosService {
     });
 
     this.logger.log(
-      `Archivo ${archivo.nombre} eliminado por usuario ${usuarioId}`,
+      `Archivo ${archivo.nombre_original} eliminado por usuario ${usuarioId}`,
     );
 
     return { message: 'Archivo eliminado correctamente' };
@@ -205,7 +206,7 @@ export class ArchivosService {
    */
   async deleteByReclamo(reclamoId: string) {
     const archivos = await this.prisma.archivo.findMany({
-      where: { reclamoId },
+      where: { reclamo_id: reclamoId },
     });
 
     for (const archivo of archivos) {
@@ -219,7 +220,7 @@ export class ArchivosService {
     }
 
     await this.prisma.archivo.deleteMany({
-      where: { reclamoId },
+      where: { reclamo_id: reclamoId },
     });
 
     this.logger.log(
@@ -245,27 +246,27 @@ export class ArchivosService {
       this.prisma.archivo.count(),
       this.prisma.archivo.aggregate({
         _sum: {
-          tamano: true,
+          tamanio_bytes: true,
         },
       }),
       this.prisma.archivo.groupBy({
-        by: ['tipo'],
+        by: ['mime_type'],
         _count: true,
         _sum: {
-          tamano: true,
+          tamanio_bytes: true,
         },
       }),
     ]);
 
     return {
       totalArchivos,
-      totalTamano: totalTamano._sum.tamano || 0,
-      totalTamanoMB: Math.round((totalTamano._sum.tamano || 0) / 1024 / 1024),
+      totalTamano: totalTamano._sum.tamanio_bytes || 0,
+      totalTamanoMB: Math.round((totalTamano._sum.tamanio_bytes || 0) / 1024 / 1024),
       archivosPorTipo: archivosPorTipo.map((tipo) => ({
-        tipo: tipo.tipo,
+        tipo: tipo.mime_type,
         cantidad: tipo._count,
-        tamanoTotal: tipo._sum.tamano || 0,
-        tamanoTotalMB: Math.round((tipo._sum.tamano || 0) / 1024 / 1024),
+        tamanoTotal: tipo._sum.tamanio_bytes || 0,
+        tamanoTotalMB: Math.round((tipo._sum.tamanio_bytes || 0) / 1024 / 1024),
       })),
     };
   }

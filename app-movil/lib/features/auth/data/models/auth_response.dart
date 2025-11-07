@@ -9,7 +9,7 @@ class AuthResponse with _$AuthResponse {
   const factory AuthResponse({
     required String accessToken,
     required String refreshToken,
-    required UserModel usuario,
+    @JsonKey(name: 'user') required UserModel usuario,
   }) = _AuthResponse;
 
   factory AuthResponse.fromJson(Map<String, dynamic> json) =>

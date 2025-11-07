@@ -26,7 +26,8 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
-import { Usuario, Role, EstadoUsuario } from '@prisma/client';
+import { RolUsuario, EstadoUsuario } from '../../common/types/prisma-enums';
+import { Usuario } from '@prisma/client';
 
 @ApiTags('Usuarios')
 @Controller('usuarios')
@@ -36,7 +37,7 @@ export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Post()
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Crear nuevo usuario' })
   @ApiResponse({ status: 201, description: 'Usuario creado correctamente' })
   @ApiResponse({ status: 409, description: 'Email o DNI ya existe' })
@@ -45,12 +46,12 @@ export class UsuariosController {
   }
 
   @Get()
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Obtener todos los usuarios' })
   @ApiQuery({
     name: 'rol',
     required: false,
-    enum: Role,
+    enum: RolUsuario,
     description: 'Filtrar por rol',
   })
   @ApiQuery({
@@ -78,15 +79,15 @@ export class UsuariosController {
   })
   @ApiResponse({ status: 200, description: 'Lista de usuarios' })
   async findAll(
-    @Query('rol') rol?: Role,
-    @Query('estado') estado?: EstadoUsuario,
+    @Query('rol') rol?: RolUsuario,
+    @Query('activo') activo?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
     return this.usuariosService.findByFilters(
       rol,
-      estado,
+      activo === 'true' ? true : activo === 'false' ? false : undefined,
       search,
       page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 10,
@@ -94,7 +95,7 @@ export class UsuariosController {
   }
 
   @Get('stats')
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(RolUsuario.ADMINISTRADOR)
   @ApiOperation({ summary: 'Obtener estadísticas de usuarios' })
   @ApiResponse({ status: 200, description: 'Estadísticas de usuarios' })
   async getStats() {
@@ -116,7 +117,7 @@ export class UsuariosController {
     @Body() updateUsuarioDto: UpdateUsuarioDto,
   ) {
     // Filtrar campos que el usuario no puede cambiar sobre sí mismo
-    const { rol, estado, ...allowedFields } = updateUsuarioDto;
+    const { rol, ...allowedFields } = updateUsuarioDto as any;
     return this.usuariosService.update(
       user.id,
       allowedFields,
@@ -153,7 +154,7 @@ export class UsuariosController {
   }
 
   @Patch(':id')
-  @Roles(Role.ADMINISTRADOR, Role.SUPERVISOR)
+  @Roles(RolUsuario.ADMINISTRADOR, RolUsuario.SUPERVISOR)
   @ApiOperation({ summary: 'Actualizar usuario' })
   @ApiParam({ name: 'id', description: 'UUID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario actualizado correctamente' })
@@ -174,7 +175,7 @@ export class UsuariosController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.OK)
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(RolUsuario.ADMINISTRADOR)
   @ApiOperation({ summary: 'Eliminar usuario (soft delete)' })
   @ApiParam({ name: 'id', description: 'UUID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario eliminado correctamente' })
@@ -191,7 +192,7 @@ export class UsuariosController {
   }
 
   @Patch(':id/restore')
-  @Roles(Role.ADMINISTRADOR)
+  @Roles(RolUsuario.ADMINISTRADOR)
   @ApiOperation({ summary: 'Restaurar usuario eliminado' })
   @ApiParam({ name: 'id', description: 'UUID del usuario' })
   @ApiResponse({ status: 200, description: 'Usuario restaurado correctamente' })

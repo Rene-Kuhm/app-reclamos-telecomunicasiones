@@ -148,4 +148,34 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<bool> isLoggedIn() async {
     return await _secureStorage.isLoggedIn();
   }
+
+  @override
+  Future<Either<Failure, void>> forgotPassword({required String email}) async {
+    try {
+      await _remoteDataSource.forgotPassword(email);
+      return const Right(null);
+    } on ApiException catch (e) {
+      return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure('Error inesperado: ${e.toString()}'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    try {
+      await _remoteDataSource.resetPassword(
+        token: token,
+        newPassword: newPassword,
+      );
+      return const Right(null);
+    } on ApiException catch (e) {
+      return Left(ErrorHandler.exceptionToFailure(e));
+    } catch (e) {
+      return Left(ServerFailure('Error inesperado: ${e.toString()}'));
+    }
+  }
 }

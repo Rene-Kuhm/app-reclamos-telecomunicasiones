@@ -68,4 +68,26 @@ class AuthRemoteDataSource {
     final response = await _dioClient.get(ApiEndpoints.me);
     return UserModel.fromJson(response.data);
   }
+
+  /// Forgot password
+  Future<void> forgotPassword(String email) async {
+    await _dioClient.post(
+      ApiEndpoints.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  /// Reset password
+  Future<void> resetPassword({
+    required String token,
+    required String newPassword,
+  }) async {
+    await _dioClient.post(
+      ApiEndpoints.resetPassword,
+      data: {
+        'token': token,
+        'newPassword': newPassword,
+      },
+    );
+  }
 }

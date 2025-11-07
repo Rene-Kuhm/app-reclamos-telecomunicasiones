@@ -4,9 +4,9 @@ import {
   ForbiddenException,
   Logger,
 } from '@nestjs/common';
-import { PrismaService } from '../../prisma/prisma.service';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { CreateComentarioDto } from '../dto';
-import { Role } from '@prisma/client';
+import { RolUsuario } from '../../../common/types/prisma-enums';
 
 @Injectable()
 export class ComentariosService {
@@ -30,8 +30,8 @@ export class ComentariosService {
 
     const comentario = await this.prisma.comentario.create({
       data: {
-        reclamoId,
-        usuarioId,
+        reclamo_id: reclamoId,
+        usuario_id: usuarioId,
         contenido: createComentarioDto.contenido,
         interno: createComentarioDto.interno || false,
       },
@@ -61,12 +61,12 @@ export class ComentariosService {
         email: comentario.usuario.email,
         rol: comentario.usuario.rol,
       },
-      createdAt: comentario.createdAt,
-      updatedAt: comentario.updatedAt,
+      createdAt: comentario.created_at,
+      updatedAt: comentario.updated_at,
     };
   }
 
-  async findAll(reclamoId: string, usuarioRol: Role, incluirInternos: boolean = true) {
+  async findAll(reclamoId: string, usuarioRol: string, incluirInternos: boolean = true) {
     // Verificar que el reclamo existe
     const reclamo = await this.prisma.reclamo.findUnique({
       where: { id: reclamoId },
@@ -77,9 +77,9 @@ export class ComentariosService {
     }
 
     // Si es profesional (cliente), no mostrar comentarios internos
-    const where: any = { reclamoId };
+    const where: any = { reclamo_id: reclamoId };
 
-    if (usuarioRol === Role.PROFESIONAL && !incluirInternos) {
+    if (usuarioRol === RolUsuario.PROFESIONAL && !incluirInternos) {
       where.interno = false;
     }
 
@@ -97,7 +97,7 @@ export class ComentariosService {
         },
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
@@ -110,15 +110,15 @@ export class ComentariosService {
         email: comentario.usuario.email,
         rol: comentario.usuario.rol,
       },
-      createdAt: comentario.createdAt,
-      updatedAt: comentario.updatedAt,
+      createdAt: comentario.created_at,
+      updatedAt: comentario.updated_at,
     }));
   }
 
   async update(
     comentarioId: string,
     usuarioId: string,
-    usuarioRol: Role,
+    usuarioRol: string,
     contenido: string,
   ) {
     const comentario = await this.prisma.comentario.findUnique({
@@ -131,8 +131,8 @@ export class ComentariosService {
 
     // Solo el autor o un admin puede editar
     if (
-      comentario.usuarioId !== usuarioId &&
-      usuarioRol !== Role.ADMINISTRADOR
+      comentario.usuario_id !== usuarioId &&
+      usuarioRol !== RolUsuario.ADMINISTRADOR
     ) {
       throw new ForbiddenException(
         'No tienes permisos para editar este comentario',
@@ -163,12 +163,12 @@ export class ComentariosService {
         nombre: `${comentarioActualizado.usuario.nombre} ${comentarioActualizado.usuario.apellido}`,
         rol: comentarioActualizado.usuario.rol,
       },
-      createdAt: comentarioActualizado.createdAt,
-      updatedAt: comentarioActualizado.updatedAt,
+      createdAt: comentarioActualizado.created_at,
+      updatedAt: comentarioActualizado.updated_at,
     };
   }
 
-  async delete(comentarioId: string, usuarioId: string, usuarioRol: Role) {
+  async delete(comentarioId: string, usuarioId: string, usuarioRol: string) {
     const comentario = await this.prisma.comentario.findUnique({
       where: { id: comentarioId },
     });
@@ -179,8 +179,8 @@ export class ComentariosService {
 
     // Solo el autor o un admin puede eliminar
     if (
-      comentario.usuarioId !== usuarioId &&
-      usuarioRol !== Role.ADMINISTRADOR
+      comentario.usuario_id !== usuarioId &&
+      usuarioRol !== RolUsuario.ADMINISTRADOR
     ) {
       throw new ForbiddenException(
         'No tienes permisos para eliminar este comentario',
