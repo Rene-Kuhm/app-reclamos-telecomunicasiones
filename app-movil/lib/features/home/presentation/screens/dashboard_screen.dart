@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/design/app_spacing.dart';
+import '../../../../core/design/app_colors.dart';
+import '../../../../core/design/app_text_styles.dart';
+import '../../../../core/design/app_animations.dart';
+import '../../../../core/design/app_shadows.dart';
+import '../../../../core/widgets/skeleton_loader.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
 import '../../../reclamos/presentation/providers/reclamos_provider.dart';
 import '../../../reclamos/presentation/providers/reclamos_stats_provider.dart';
@@ -31,24 +38,28 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final statsAsync = ref.watch(reclamosStatsProvider);
     final notificacionesState = ref.watch(notificacionesProvider);
     final reclamosState = ref.watch(reclamosProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final user = authState.user;
     final notificacionesNoLeidas = notificacionesState.unreadCount;
 
     return Scaffold(
       appBar: AppBar(
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'Hola, ${user?.nombre.split(' ')[0] ?? 'Usuario'}',
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+              style: AppTextStyles.titleMedium(
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ).copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
               'Bienvenido de vuelta',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: AppTextStyles.bodySmall(
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -62,34 +73,47 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ]);
           },
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(AppSpacing.md),
             children: [
-            // Greeting card
-            Card(
+            // Greeting card with gradient
+            Container(
+              decoration: BoxDecoration(
+                gradient: AppColors.createGradient(AppColors.primaryGradient),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+                boxShadow: AppShadows.card,
+              ),
               child: Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(AppSpacing.md),
                 child: Row(
                   children: [
-                    Icon(
-                      Icons.wb_sunny_outlined,
-                      size: 48,
-                      color: Theme.of(context).colorScheme.primary,
+                    Container(
+                      padding: EdgeInsets.all(AppSpacing.sm),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                      ),
+                      child: Icon(
+                        Icons.wb_sunny_outlined,
+                        size: AppSpacing.iconXl,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: AppSpacing.md),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             '${_getGreeting()}!',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                            style: AppTextStyles.titleLarge(color: Colors.white)
+                                .copyWith(fontWeight: FontWeight.bold),
                           ),
-                          const SizedBox(height: 4),
+                          SizedBox(height: AppSpacing.xxxs),
                           Text(
                             'Gestiona tus reclamos fácilmente',
-                            style: Theme.of(context).textTheme.bodyMedium,
+                            style: AppTextStyles.bodyMedium(
+                              color: Colors.white.withOpacity(0.9),
+                            ),
                           ),
                         ],
                       ),
@@ -97,17 +121,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   ],
                 ),
               ),
-            ),
-            const SizedBox(height: 24),
+            ).animate().fadeIn(duration: AppAnimations.normal).scale(begin: const Offset(0.95, 0.95)),
+            SizedBox(height: AppSpacing.lg),
 
             // Statistics section
             Text(
               'Estadísticas',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
+              style: AppTextStyles.titleLarge(
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ).copyWith(fontWeight: FontWeight.bold),
+            ).animate(delay: 100.ms).fadeIn().slideY(begin: 0.2, end: 0),
+            SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 Expanded(
@@ -115,21 +139,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'Total',
                     value: stats.total.toString(),
                     icon: Icons.report,
-                    color: Colors.blue,
-                  ),
+                    color: AppColors.info,
+                  ).animate(delay: 150.ms).fadeIn().slideY(begin: 0.3, end: 0),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: StatisticsCard(
                     title: 'Pendientes',
                     value: stats.pendientes.toString(),
                     icon: Icons.error_outline,
-                    color: Colors.orange,
-                  ),
+                    color: AppColors.warning,
+                  ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.3, end: 0),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 Expanded(
@@ -137,52 +161,52 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'En Progreso',
                     value: stats.enProgreso.toString(),
                     icon: Icons.hourglass_empty,
-                    color: Colors.purple,
-                  ),
+                    color: AppColors.estadoEnProgreso,
+                  ).animate(delay: 250.ms).fadeIn().slideY(begin: 0.3, end: 0),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: StatisticsCard(
                     title: 'Resueltos',
                     value: stats.resueltos.toString(),
                     icon: Icons.check_circle,
-                    color: Colors.green,
-                  ),
+                    color: AppColors.success,
+                  ).animate(delay: 300.ms).fadeIn().slideY(begin: 0.3, end: 0),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: AppSpacing.lg),
 
             // Quick actions section
             Text(
               'Acciones Rápidas',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 12),
+              style: AppTextStyles.titleLarge(
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ).copyWith(fontWeight: FontWeight.bold),
+            ).animate(delay: 350.ms).fadeIn().slideY(begin: 0.2, end: 0),
+            SizedBox(height: AppSpacing.sm),
             Row(
               children: [
                 Expanded(
                   child: QuickActionButton(
                     icon: Icons.add_circle_outline,
                     label: 'Nuevo Reclamo',
-                    color: Theme.of(context).colorScheme.primary,
+                    color: AppColors.primary,
                     onTap: () => context.push('/reclamos/create'),
-                  ),
+                  ).animate(delay: 400.ms).fadeIn().scale(begin: const Offset(0.9, 0.9)),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: AppSpacing.sm),
                 Expanded(
                   child: QuickActionButton(
                     icon: Icons.list_alt,
                     label: 'Ver Reclamos',
-                    color: Theme.of(context).colorScheme.secondary,
+                    color: AppColors.secondary,
                     onTap: () => context.push('/reclamos'),
-                  ),
+                  ).animate(delay: 450.ms).fadeIn().scale(begin: const Offset(0.9, 0.9)),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: AppSpacing.lg),
 
             // Recent reclamos section
             if (reclamosState.reclamos.isNotEmpty) ...[
@@ -191,53 +215,162 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 children: [
                   Text(
                     'Reclamos Recientes',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                    style: AppTextStyles.titleLarge(
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    ).copyWith(fontWeight: FontWeight.bold),
                   ),
                   TextButton(
                     onPressed: () => context.push('/reclamos'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppColors.primary,
+                    ),
                     child: const Text('Ver todos'),
                   ),
                 ],
-              ),
-              const SizedBox(height: 12),
-              ...reclamosState.reclamos.take(3).map((reclamo) {
+              ).animate(delay: 500.ms).fadeIn().slideY(begin: 0.2, end: 0),
+              SizedBox(height: AppSpacing.sm),
+              ...reclamosState.reclamos.take(3).toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final reclamo = entry.value;
                 return Card(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  child: ListTile(
-                    leading: CircleAvatar(
-                      backgroundColor: _getPrioridadColor(reclamo.prioridad),
-                      child: const Icon(Icons.report_problem, color: Colors.white),
-                    ),
-                    title: Text(
-                      reclamo.titulo,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    subtitle: Text(reclamo.estadoDisplayName),
-                    trailing: const Icon(Icons.chevron_right),
+                  margin: EdgeInsets.only(bottom: AppSpacing.xs),
+                  child: InkWell(
                     onTap: () => context.push('/reclamos/${reclamo.id}'),
+                    borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                    child: Padding(
+                      padding: EdgeInsets.all(AppSpacing.sm),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: AppSpacing.avatarMd,
+                            height: AppSpacing.avatarMd,
+                            decoration: BoxDecoration(
+                              color: AppColors.getPrioridadColor(reclamo.prioridad),
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
+                            ),
+                            child: const Icon(
+                              Icons.report_problem,
+                              color: Colors.white,
+                              size: 20,
+                            ),
+                          ),
+                          SizedBox(width: AppSpacing.sm),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  reclamo.titulo,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: AppTextStyles.bodyMedium(
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                  ).copyWith(fontWeight: FontWeight.w600),
+                                ),
+                                SizedBox(height: AppSpacing.xxxs),
+                                Text(
+                                  reclamo.estadoDisplayName,
+                                  style: AppTextStyles.bodySmall(
+                                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight,
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                );
+                ).animate(delay: (550 + (index * 50)).ms).fadeIn().slideX(begin: 0.2, end: 0);
               }).toList(),
             ],
           ],
         ),
       ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
+        loading: () => Padding(
+          padding: EdgeInsets.all(AppSpacing.md),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Icon(Icons.error, size: 64, color: Colors.red),
-              const SizedBox(height: 16),
-              Text('Error: $error'),
-              ElevatedButton(
-                onPressed: () => ref.invalidate(reclamosStatsProvider),
-                child: const Text('Reintentar'),
+              // Greeting skeleton
+              SkeletonLoader(
+                width: double.infinity,
+                height: 120,
+                isDark: isDark,
+                borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
+              ),
+              SizedBox(height: AppSpacing.lg),
+              // Statistics skeletons
+              SkeletonLoader(
+                width: 150,
+                height: 24,
+                isDark: isDark,
+              ),
+              SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(child: StatisticsCardSkeleton(isDark: isDark)),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(child: StatisticsCardSkeleton(isDark: isDark)),
+                ],
+              ),
+              SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Expanded(child: StatisticsCardSkeleton(isDark: isDark)),
+                  SizedBox(width: AppSpacing.sm),
+                  Expanded(child: StatisticsCardSkeleton(isDark: isDark)),
+                ],
               ),
             ],
+          ),
+        ),
+        error: (error, stack) => Center(
+          child: Padding(
+            padding: EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.error_outline,
+                  size: AppSpacing.iconXxl,
+                  color: AppColors.error,
+                ),
+                SizedBox(height: AppSpacing.md),
+                Text(
+                  'Error al cargar',
+                  style: AppTextStyles.titleLarge(
+                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                  ).copyWith(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: AppSpacing.xs),
+                Text(
+                  error.toString(),
+                  style: AppTextStyles.bodyMedium(
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                SizedBox(height: AppSpacing.lg),
+                ElevatedButton.icon(
+                  onPressed: () => ref.invalidate(reclamosStatsProvider),
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Reintentar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: Colors.white,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                      vertical: AppSpacing.sm,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -249,20 +382,5 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     if (hour < 12) return 'Buenos días';
     if (hour < 18) return 'Buenas tardes';
     return 'Buenas noches';
-  }
-
-  Color _getPrioridadColor(String prioridad) {
-    switch (prioridad.toUpperCase()) {
-      case 'BAJA':
-        return Colors.green;
-      case 'MEDIA':
-        return Colors.orange;
-      case 'ALTA':
-        return Colors.red;
-      case 'URGENTE':
-        return Colors.red.shade900;
-      default:
-        return Colors.grey;
-    }
   }
 }

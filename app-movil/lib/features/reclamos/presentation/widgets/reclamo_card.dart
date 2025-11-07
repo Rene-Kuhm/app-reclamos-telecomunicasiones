@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/design/app_spacing.dart';
+import '../../../../core/design/app_colors.dart';
+import '../../../../core/design/app_text_styles.dart';
+import '../../../../core/design/app_shadows.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/entities/reclamo.dart';
 import 'estado_chip.dart';
@@ -17,17 +21,22 @@ class ReclamoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final prioridadColor = _getPrioridadColor(reclamo.prioridad);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final prioridadColor = AppColors.getPrioridadColor(reclamo.prioridad);
 
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      margin: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.xxs,
+      ),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        borderRadius: BorderRadius.circular(16),
+        color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: (isDark ? AppColors.outlineDark : AppColors.outlineLight).withOpacity(0.2),
           width: 1,
         ),
+        boxShadow: AppShadows.card,
       ),
       child: Stack(
         children: [
@@ -37,12 +46,12 @@ class ReclamoCard extends StatelessWidget {
             top: 0,
             bottom: 0,
             child: Container(
-              width: 4,
+              width: AppSpacing.xxxs,
               decoration: BoxDecoration(
                 color: prioridadColor,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(16),
-                  bottomLeft: Radius.circular(16),
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(AppSpacing.radiusLg),
+                  bottomLeft: Radius.circular(AppSpacing.radiusLg),
                 ),
               ),
             ),
@@ -53,13 +62,13 @@ class ReclamoCard extends StatelessWidget {
             color: Colors.transparent,
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
               child: Padding(
-                padding: const EdgeInsets.only(
-                  left: 20,
-                  right: 16,
-                  top: 16,
-                  bottom: 16,
+                padding: EdgeInsets.only(
+                  left: AppSpacing.md,
+                  right: AppSpacing.md,
+                  top: AppSpacing.md,
+                  bottom: AppSpacing.md,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,68 +80,68 @@ class ReclamoCard extends StatelessWidget {
                       children: [
                         if (reclamo.numero != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: AppSpacing.xs,
+                              vertical: AppSpacing.xxxs,
                             ),
                             decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
+                              color: AppColors.primary.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(AppSpacing.radiusSm),
                             ),
                             child: Text(
                               '#${reclamo.numero}',
-                              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                    letterSpacing: 0.5,
-                                  ),
+                              style: AppTextStyles.labelSmall(color: AppColors.primary).copyWith(
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 0.5,
+                              ),
                             ),
                           ),
                         EstadoChip(estado: reclamo.estado),
                       ],
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: AppSpacing.sm),
 
                     // Title
                     Text(
                       reclamo.titulo,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: -0.2,
-                          ),
+                      style: AppTextStyles.titleMedium(
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                      ).copyWith(
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: -0.2,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: AppSpacing.xs),
 
                     // Description
                     Text(
                       reclamo.descripcion,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            height: 1.4,
-                          ),
+                      style: AppTextStyles.bodyMedium(
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                      ).copyWith(height: 1.4),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 14),
+                    SizedBox(height: AppSpacing.sm),
 
                     // Footer with metadata
                     Row(
                       children: [
                         // Prioridad
                         PrioridadIndicator(prioridad: reclamo.prioridad),
-                        const SizedBox(width: 12),
+                        SizedBox(width: AppSpacing.sm),
 
                         // Categoria with icon
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: AppSpacing.xs,
+                            vertical: AppSpacing.xxxs,
                           ),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surfaceVariant,
-                            borderRadius: BorderRadius.circular(6),
+                            color: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                            borderRadius: BorderRadius.circular(AppSpacing.radiusXs),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -140,16 +149,17 @@ class ReclamoCard extends StatelessWidget {
                               Icon(
                                 _getCategoriaIcon(reclamo.categoria),
                                 size: 14,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: AppSpacing.xxxs),
                               Text(
                                 reclamo.categoriaDisplayName,
-                                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                      fontWeight: FontWeight.w500,
-                                      fontSize: 11,
-                                    ),
+                                style: AppTextStyles.bodySmall(
+                                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                ).copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 11,
+                                ),
                               ),
                             ],
                           ),
@@ -161,15 +171,14 @@ class ReclamoCard extends StatelessWidget {
                         Icon(
                           Icons.access_time,
                           size: 14,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight,
                         ),
-                        const SizedBox(width: 4),
+                        SizedBox(width: AppSpacing.xxxs),
                         Text(
                           DateFormatter.formatRelative(reclamo.createdAt),
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                                fontWeight: FontWeight.w500,
-                              ),
+                          style: AppTextStyles.bodySmall(
+                            color: isDark ? AppColors.textTertiaryDark : AppColors.textTertiaryLight,
+                          ).copyWith(fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -181,21 +190,6 @@ class ReclamoCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Color _getPrioridadColor(String prioridad) {
-    switch (prioridad.toUpperCase()) {
-      case 'URGENTE':
-        return const Color(0xFFD32F2F);
-      case 'ALTA':
-        return const Color(0xFFEF6C00);
-      case 'MEDIA':
-        return const Color(0xFFFFA000);
-      case 'BAJA':
-        return const Color(0xFF388E3C);
-      default:
-        return const Color(0xFF757575);
-    }
   }
 
   IconData _getCategoriaIcon(String categoria) {

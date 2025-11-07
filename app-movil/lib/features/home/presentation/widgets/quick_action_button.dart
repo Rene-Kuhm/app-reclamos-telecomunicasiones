@@ -1,4 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/design/app_spacing.dart';
+import '../../../../core/design/app_colors.dart';
+import '../../../../core/design/app_text_styles.dart';
+import '../../../../core/design/app_animations.dart';
 
 /// Enterprise-grade Quick action button widget with hover effect
 class QuickActionButton extends StatefulWidget {
@@ -24,21 +28,23 @@ class _QuickActionButtonState extends State<QuickActionButton> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return MouseRegion(
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeInOut,
+        duration: AppAnimations.fast,
+        curve: AppAnimations.emphasized,
         transform: Matrix4.identity()
           ..translate(0.0, _isHovered ? -4.0 : 0.0),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
+          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
           border: Border.all(
             color: _isHovered
                 ? widget.color.withOpacity(0.4)
-                : Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                : (isDark ? AppColors.outlineDark : AppColors.outlineLight).withOpacity(0.2),
             width: _isHovered ? 2 : 1,
           ),
           boxShadow: _isHovered
@@ -55,14 +61,17 @@ class _QuickActionButtonState extends State<QuickActionButton> {
           color: Colors.transparent,
           child: InkWell(
             onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.md,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(18),
+                    padding: EdgeInsets.all(AppSpacing.md),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         begin: Alignment.topLeft,
@@ -72,24 +81,25 @@ class _QuickActionButtonState extends State<QuickActionButton> {
                           widget.color.withOpacity(0.08),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
                     ),
                     child: Icon(
                       widget.icon,
                       color: widget.color,
-                      size: 32,
+                      size: AppSpacing.iconLg,
                     ),
                   ),
-                  const SizedBox(height: 14),
+                  SizedBox(height: AppSpacing.sm),
                   Text(
                     widget.label,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.2,
-                          color: _isHovered
-                              ? widget.color
-                              : Theme.of(context).colorScheme.onSurface,
-                        ),
+                    style: AppTextStyles.bodyMedium(
+                      color: _isHovered
+                          ? widget.color
+                          : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                    ).copyWith(
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.2,
+                    ),
                     textAlign: TextAlign.center,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,

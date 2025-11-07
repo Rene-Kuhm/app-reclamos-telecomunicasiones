@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../../../core/design/app_spacing.dart';
+import '../../../../core/design/app_colors.dart';
+import '../../../../core/design/app_text_styles.dart';
 
 /// Enterprise-grade Statistics card widget with gradient background
 class StatisticsCard extends StatelessWidget {
@@ -17,6 +20,8 @@ class StatisticsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -27,49 +32,51 @@ class StatisticsCard extends StatelessWidget {
             color.withOpacity(0.02),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(AppSpacing.radiusLg),
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          color: (isDark ? AppColors.outlineDark : AppColors.outlineLight).withOpacity(0.2),
           width: 1,
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Icon with background
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(AppSpacing.sm),
               decoration: BoxDecoration(
                 color: color.withOpacity(0.15),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(AppSpacing.radiusMd),
               ),
               child: Icon(
                 icon,
                 color: color,
-                size: 28,
+                size: AppSpacing.iconMd,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: AppSpacing.md),
             // Value
             Text(
               value,
-              style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    letterSpacing: -0.5,
-                  ),
+              style: AppTextStyles.headlineLarge(
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ).copyWith(
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
             ),
-            const SizedBox(height: 4),
+            SizedBox(height: AppSpacing.xxxs),
             // Title
             Text(
               title,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.2,
-                  ),
+              style: AppTextStyles.bodyMedium(
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+              ).copyWith(
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.2,
+              ),
             ),
           ],
         ),
