@@ -6,6 +6,12 @@ import 'package:file_picker/file_picker.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import '../../../../core/design/app_spacing.dart';
+import '../../../../core/design/app_colors.dart';
+import '../../../../core/design/app_text_styles.dart';
+import '../../../../core/design/app_animations.dart';
+import '../../../../core/design/app_shadows.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../../../core/config/app_config.dart';
 import '../providers/reclamo_detail_provider.dart';
@@ -223,10 +229,17 @@ class _ReclamoDetailScreenState extends ConsumerState<ReclamoDetailScreen>
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(reclamoDetailProvider(widget.reclamoId));
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Detalle del Reclamo'),
+        elevation: 0,
+        title: Text(
+          'Detalle del Reclamo',
+          style: AppTextStyles.titleMedium(
+            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+          ).copyWith(fontWeight: FontWeight.bold),
+        ),
         actions: [
           if (state.reclamo != null && !state.reclamo!.isClosed)
             IconButton(
