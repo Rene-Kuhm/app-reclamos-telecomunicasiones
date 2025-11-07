@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/config/theme_provider.dart';
 import '../../../../core/config/app_config.dart';
-import '../../../../core/providers/push_notification_provider.dart';
+// import '../../../../core/providers/push_notification_provider.dart'; // Temporalmente deshabilitado
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -11,7 +11,7 @@ class SettingsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final themeMode = ref.watch(themeModeProvider);
-    final pushState = ref.watch(pushNotificationProvider);
+    // final pushState = ref.watch(pushNotificationProvider); // Temporalmente deshabilitado
 
     return Scaffold(
       appBar: AppBar(
@@ -23,37 +23,37 @@ class SettingsScreen extends ConsumerWidget {
       ),
       body: ListView(
         children: [
-          // Notifications Section
-          _buildSectionHeader(context, 'Notificaciones'),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_active),
-            title: const Text('Notificaciones Push'),
-            subtitle: Text(
-              pushState.hasPermission
-                  ? 'Las notificaciones están activadas'
-                  : 'Las notificaciones están desactivadas',
-            ),
-            value: pushState.hasPermission,
-            onChanged: (value) async {
-              if (value) {
-                await ref.read(pushNotificationProvider.notifier).optIn();
-                await ref.read(pushNotificationProvider.notifier).requestPermission();
-              } else {
-                await ref.read(pushNotificationProvider.notifier).optOut();
-              }
-            },
-          ),
-          if (pushState.playerId != null)
-            ListTile(
-              leading: const Icon(Icons.info_outline),
-              title: const Text('ID del Dispositivo'),
-              subtitle: Text(
-                pushState.playerId!,
-                style: const TextStyle(fontSize: 10),
-              ),
-              isThreeLine: true,
-            ),
-          const Divider(),
+          // Notifications Section - Temporalmente deshabilitado
+          // _buildSectionHeader(context, 'Notificaciones'),
+          // SwitchListTile(
+          //   secondary: const Icon(Icons.notifications_active),
+          //   title: const Text('Notificaciones Push'),
+          //   subtitle: Text(
+          //     pushState.hasPermission
+          //         ? 'Las notificaciones están activadas'
+          //         : 'Las notificaciones están desactivadas',
+          //   ),
+          //   value: pushState.hasPermission,
+          //   onChanged: (value) async {
+          //     if (value) {
+          //       await ref.read(pushNotificationProvider.notifier).optIn();
+          //       await ref.read(pushNotificationProvider.notifier).requestPermission();
+          //     } else {
+          //       await ref.read(pushNotificationProvider.notifier).optOut();
+          //     }
+          //   },
+          // ),
+          // if (pushState.playerId != null)
+          //   ListTile(
+          //     leading: const Icon(Icons.info_outline),
+          //     title: const Text('ID del Dispositivo'),
+          //     subtitle: Text(
+          //       pushState.playerId!,
+          //       style: const TextStyle(fontSize: 10),
+          //     ),
+          //     isThreeLine: true,
+          //   ),
+          // const Divider(),
 
           // Appearance Section
           _buildSectionHeader(context, 'Apariencia'),

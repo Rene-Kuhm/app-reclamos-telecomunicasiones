@@ -28,22 +28,39 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   // CORS - Configuración según entorno
-  const allowedOrigins = configService
-    .get<string>('ALLOWED_ORIGINS', 'http://localhost:3000')
-    .split(',');
+  // En desarrollo, permitir todos los orígenes de localhost
+  if (nodeEnv === 'development') {
+    app.enableCors({
+      origin: true, // Permitir cualquier origen en desarrollo
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+      ],
+      exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+    });
+  } else {
+    // En producción, usar orígenes específicos
+    const allowedOrigins = configService
+      .get<string>('ALLOWED_ORIGINS', 'http://localhost:3000')
+      .split(',');
 
-  app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: [
-      'Content-Type',
-      'Authorization',
-      'X-Requested-With',
-      'Accept',
-    ],
-    exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
-  });
+    app.enableCors({
+      origin: allowedOrigins,
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'Accept',
+      ],
+      exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+    });
+  }
 
   // Helmet - Security headers
   app.use(
@@ -124,7 +141,7 @@ async function bootstrap() {
 
   logger.log(`🚀 Application is running on: http://localhost:${port}/${apiPrefix}`);
   logger.log(`🌍 Environment: ${nodeEnv}`);
-  logger.log(`📡 CORS enabled for: ${allowedOrigins.join(', ')}`);
+  logger.log(`📡 CORS enabled for: ${nodeEnv === 'development' ? 'All localhost origins (development mode)' : configService.get<string>('ALLOWED_ORIGINS', 'http://localhost:3000')}`);
 
   // Log de información adicional en desarrollo
   if (nodeEnv === 'development') {

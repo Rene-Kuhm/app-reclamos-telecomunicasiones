@@ -161,7 +161,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     title: 'En Progreso',
                     value: stats.enProgreso.toString(),
                     icon: Icons.hourglass_empty,
-                    color: AppColors.estadoEnProgreso,
+                    color: AppColors.estadoEnCurso,
                   ).animate(delay: 250.ms).fadeIn().slideY(begin: 0.3, end: 0),
                 ),
                 SizedBox(width: AppSpacing.sm),

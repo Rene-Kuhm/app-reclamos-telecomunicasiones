@@ -4,7 +4,7 @@ import 'core/config/router.dart';
 import 'core/config/theme_new.dart';
 import 'core/config/theme_provider.dart';
 import 'core/storage/local_storage.dart';
-import 'core/providers/push_notification_provider.dart';
+// import 'core/providers/push_notification_provider.dart'; // Temporalmente deshabilitado
 import 'features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
@@ -37,25 +37,26 @@ class _MyAppState extends ConsumerState<MyApp> {
       ref.read(authProvider.notifier).checkAuthStatus();
 
       // Initialize push notifications
-      ref.read(pushNotificationProvider);
+      // TODO: Fix OneSignal API compatibility issues
+      // ref.read(pushNotificationProvider);
 
       // Listen to auth changes to sync user ID with OneSignal
-      ref.listen<AuthState>(authProvider, (previous, next) {
-        if (next.isAuthenticated && next.user != null) {
-          // User logged in - set OneSignal user ID
-          ref.read(pushNotificationProvider.notifier).setUserId(next.user!.id);
+      // ref.listen<AuthState>(authProvider, (previous, next) {
+      //   if (next.isAuthenticated && next.user != null) {
+      //     // User logged in - set OneSignal user ID
+      //     ref.read(pushNotificationProvider.notifier).setUserId(next.user!.id);
 
-          // Set tags for segmentation
-          ref.read(pushNotificationProvider.notifier).setTags({
-            'user_id': next.user!.id,
-            'email': next.user!.email,
-            'rol': next.user!.rol,
-          });
-        } else if (previous?.isAuthenticated == true && !next.isAuthenticated) {
-          // User logged out - remove OneSignal user ID
-          ref.read(pushNotificationProvider.notifier).removeUserId();
-        }
-      });
+      //     // Set tags for segmentation
+      //     ref.read(pushNotificationProvider.notifier).setTags({
+      //       'user_id': next.user!.id,
+      //       'email': next.user!.email,
+      //       'rol': next.user!.rol,
+      //     });
+      //   } else if (previous?.isAuthenticated == true && !next.isAuthenticated) {
+      //     // User logged out - remove OneSignal user ID
+      //     ref.read(pushNotificationProvider.notifier).removeUserId();
+      //   }
+      // });
     });
   }
 
