@@ -121,7 +121,7 @@ class _ChangeEstadoDialogState extends ConsumerState<ChangeEstadoDialog> {
 
     final success = await ref
         .read(reclamoDetailProvider(widget.reclamoId).notifier)
-        .updateReclamo(estado: _selectedEstado!.value);
+        .cambiarEstado(_selectedEstado!.value);
 
     if (mounted) {
       Navigator.pop(context, success);

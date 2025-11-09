@@ -25,7 +25,10 @@ abstract class ReclamosRepository {
     required String titulo,
     required String descripcion,
     required String categoria,
+    String? subcategoria,
     required String prioridad,
+    String? direccion,
+    Map<String, dynamic>? infoContacto,
   });
 
   /// Update reclamo
@@ -36,6 +39,12 @@ abstract class ReclamosRepository {
     String? categoria,
     String? prioridad,
     String? estado,
+  });
+
+  /// Change reclamo status
+  Future<Either<ApiError, Reclamo>> cambiarEstado({
+    required String id,
+    required String nuevoEstado,
   });
 
   /// Delete reclamo

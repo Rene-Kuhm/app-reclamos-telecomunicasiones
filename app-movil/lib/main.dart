@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'core/config/router.dart';
 import 'core/config/theme_new.dart';
 import 'core/config/theme_provider.dart';
@@ -9,6 +10,9 @@ import 'features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize date formatting for Spanish locale
+  await initializeDateFormatting('es_ES', null);
 
   // Initialize Hive for local storage
   await LocalStorage.instance.init();

@@ -188,7 +188,10 @@ class ReclamosNotifier extends StateNotifier<ReclamosState> {
     required String titulo,
     required String descripcion,
     required String categoria,
+    String? subcategoria,
     required String prioridad,
+    String? direccion,
+    Map<String, dynamic>? infoContacto,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
@@ -196,7 +199,10 @@ class ReclamosNotifier extends StateNotifier<ReclamosState> {
       titulo: titulo,
       descripcion: descripcion,
       categoria: categoria,
+      subcategoria: subcategoria,
       prioridad: prioridad,
+      direccion: direccion,
+      infoContacto: infoContacto,
     );
 
     return result.fold(

@@ -4,7 +4,7 @@ import '../storage/local_storage.dart';
 
 /// Theme mode state notifier
 class ThemeModeNotifier extends StateNotifier<ThemeMode> {
-  ThemeModeNotifier() : super(ThemeMode.system) {
+  ThemeModeNotifier() : super(ThemeMode.dark) { // Default to dark theme
     _loadThemeMode();
   }
 
@@ -13,6 +13,9 @@ class ThemeModeNotifier extends StateNotifier<ThemeMode> {
     final savedMode = await LocalStorage.instance.getThemeMode();
     if (savedMode != null) {
       state = _stringToThemeMode(savedMode);
+    } else {
+      // If no saved mode, default to dark
+      state = ThemeMode.dark;
     }
   }
 

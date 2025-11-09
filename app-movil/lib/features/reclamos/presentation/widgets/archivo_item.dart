@@ -27,7 +27,7 @@ class ArchivoItem extends StatelessWidget {
           ),
         ),
         title: Text(
-          archivo.nombreArchivo,
+          archivo.nombre,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),

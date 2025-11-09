@@ -6,36 +6,39 @@ part 'archivo_model.g.dart';
 /// Archivo entity
 class Archivo {
   final String id;
-  final String nombreArchivo;
-  final String urlArchivo;
-  final String tipoArchivo;
+  final String nombre;
+  final String url;
+  final String tipo;
   final int tamano;
-  final String reclamoId;
-  final DateTime createdAt;
+  final String? reclamoId;
+  final DateTime uploadedAt;
+  final Map<String, dynamic>? uploadedBy;
 
   const Archivo({
     required this.id,
-    required this.nombreArchivo,
-    required this.urlArchivo,
-    required this.tipoArchivo,
+    required this.nombre,
+    required this.url,
+    required this.tipo,
     required this.tamano,
-    required this.reclamoId,
-    required this.createdAt,
+    this.reclamoId,
+    required this.uploadedAt,
+    this.uploadedBy,
   });
 
   /// Get file extension
   String get extension {
-    return nombreArchivo.split('.').last.toLowerCase();
+    return nombre.split('.').last.toLowerCase();
   }
 
   /// Check if it's an image
   bool get isImage {
-    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension);
+    return ['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(extension) ||
+        tipo.startsWith('image/');
   }
 
   /// Check if it's a PDF
   bool get isPDF {
-    return extension == 'pdf';
+    return extension == 'pdf' || tipo == 'application/pdf';
   }
 
   /// Format file size
@@ -55,13 +58,13 @@ class Archivo {
 class ArchivoModel with _$ArchivoModel {
   const factory ArchivoModel({
     required String id,
-    @JsonKey(name: 'nombre_archivo') required String nombreArchivo,
-    @JsonKey(name: 'url_archivo') required String urlArchivo,
-    @JsonKey(name: 'tipo_archivo') required String tipoArchivo,
+    required String nombre,
+    required String url,
+    required String tipo,
     required int tamano,
-    @JsonKey(name: 'reclamo_id') required String reclamoId,
-    @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
+    @JsonKey(name: 'reclamo_id') String? reclamoId,
+    @JsonKey(name: 'uploadedAt') required DateTime uploadedAt,
+    @JsonKey(name: 'uploadedBy') Map<String, dynamic>? uploadedBy,
   }) = _ArchivoModel;
 
   const ArchivoModel._();
@@ -74,12 +77,13 @@ class ArchivoModel with _$ArchivoModel {
   Archivo toEntity() {
     return Archivo(
       id: id,
-      nombreArchivo: nombreArchivo,
-      urlArchivo: urlArchivo,
-      tipoArchivo: tipoArchivo,
+      nombre: nombre,
+      url: url,
+      tipo: tipo,
       tamano: tamano,
       reclamoId: reclamoId,
-      createdAt: createdAt,
+      uploadedAt: uploadedAt,
+      uploadedBy: uploadedBy,
     );
   }
 }

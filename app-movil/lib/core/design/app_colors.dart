@@ -5,16 +5,16 @@ import 'package:flutter/material.dart';
 class AppColors {
   AppColors._();
 
-  // Primary colors
-  static const Color primary = Color(0xFF0D47A1); // Deep Professional Blue
-  static const Color primaryLight = Color(0xFF5472D3);
-  static const Color primaryDark = Color(0xFF002171);
+  // Primary colors - Modern Admin Panel Style
+  static const Color primary = Color(0xFF2697FF); // Bright Blue (from reference design)
+  static const Color primaryLight = Color(0xFF5FB3FF);
+  static const Color primaryDark = Color(0xFF1565C0);
   static const Color onPrimary = Color(0xFFFFFFFF);
 
-  // Secondary colors
-  static const Color secondary = Color(0xFF00695C); // Professional Teal
-  static const Color secondaryLight = Color(0xFF439889);
-  static const Color secondaryDark = Color(0xFF003D33);
+  // Secondary colors - Dark UI Elements
+  static const Color secondary = Color(0xFF2A2D3E); // Dark slate (sidebar, cards)
+  static const Color secondaryLight = Color(0xFF3E4153);
+  static const Color secondaryDark = Color(0xFF1F2128);
   static const Color onSecondary = Color(0xFFFFFFFF);
 
   // Accent colors
@@ -29,12 +29,12 @@ class AppColors {
   static const Color outlineLight = Color(0xFFE0E0E0);
   static const Color outlineVariantLight = Color(0xFFF5F5F5);
 
-  // Neutral colors (Dark theme)
-  static const Color backgroundDark = Color(0xFF121212);
-  static const Color surfaceDark = Color(0xFF1E1E1E);
-  static const Color surfaceVariantDark = Color(0xFF2C2C2C);
-  static const Color outlineDark = Color(0xFF3E3E3E);
-  static const Color outlineVariantDark = Color(0xFF2C2C2C);
+  // Neutral colors (Dark theme) - Admin Panel Dark Theme
+  static const Color backgroundDark = Color(0xFF212332); // Very dark navy/charcoal (main bg)
+  static const Color surfaceDark = Color(0xFF2A2D3E); // Dark slate (cards, sidebar)
+  static const Color surfaceVariantDark = Color(0xFF1F2128); // Darker variant
+  static const Color outlineDark = Color(0xFF3E4153); // Subtle borders
+  static const Color outlineVariantDark = Color(0xFF2A2D3E);
 
   // Text colors (Light theme)
   static const Color textPrimaryLight = Color(0xFF212121);
@@ -85,13 +85,13 @@ class AppColors {
 
   // Gradient colors
   static const List<Color> primaryGradient = [
-    Color(0xFF0D47A1),
+    Color(0xFF2697FF),
     Color(0xFF1565C0),
   ];
 
   static const List<Color> secondaryGradient = [
-    Color(0xFF00695C),
-    Color(0xFF00897B),
+    Color(0xFF2A2D3E),
+    Color(0xFF1F2128),
   ];
 
   static const List<Color> accentGradient = [
@@ -126,6 +126,10 @@ class AppColors {
   // Divider colors
   static const Color dividerLight = Color(0xFFE0E0E0);
   static const Color dividerDark = Color(0xFF424242);
+
+  // Border colors
+  static const Color borderLight = Color(0xFFE0E0E0);
+  static const Color borderDark = Color(0xFF3E3E3E);
 
   // Helper methods
   static Color getEstadoColor(String estado) {

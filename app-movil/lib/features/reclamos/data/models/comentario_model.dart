@@ -28,11 +28,12 @@ class ComentarioModel with _$ComentarioModel {
   const factory ComentarioModel({
     required String id,
     required String contenido,
-    @JsonKey(name: 'reclamo_id') required String reclamoId,
-    @JsonKey(name: 'usuario_id') required String usuarioId,
-    @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
-    @JsonKey(name: 'usuario') Map<String, dynamic>? usuario,
+    @JsonKey(name: 'reclamo_id') String? reclamoId,
+    @JsonKey(name: 'usuario_id') String? usuarioId,
+    @JsonKey(name: 'interno', defaultValue: false) required bool interno,
+    required DateTime createdAt,
+    required DateTime updatedAt,
+    Map<String, dynamic>? usuario,
   }) = _ComentarioModel;
 
   const ComentarioModel._();
@@ -48,8 +49,8 @@ class ComentarioModel with _$ComentarioModel {
     return Comentario(
       id: id,
       contenido: contenido,
-      reclamoId: reclamoId,
-      usuarioId: usuarioId,
+      reclamoId: reclamoId ?? '',
+      usuarioId: usuarioId ?? '',
       nombreUsuario: nombreUsuario,
       createdAt: createdAt,
     );

@@ -9,17 +9,27 @@ part 'notificacion_model.g.dart';
 class NotificacionModel with _$NotificacionModel {
   const factory NotificacionModel({
     required String id,
-    required String titulo,
-    required String mensaje,
-    required String tipo,
-    required bool leida,
     @JsonKey(name: 'usuario_id') required String usuarioId,
     @JsonKey(name: 'reclamo_id') String? reclamoId,
+    required String tipo,
+    required String estado,
+    required String titulo,
+    required String mensaje,
+    @JsonKey(name: 'datos_envio') dynamic datosEnvio,
+    @JsonKey(name: 'intentos_envio') int? intentosEnvio,
+    @JsonKey(name: 'enviada_at') DateTime? enviadaAt,
+    @JsonKey(name: 'entregada_at') DateTime? entregadaAt,
+    @JsonKey(name: 'leida_at') DateTime? leidaAt,
+    @JsonKey(name: 'error_mensaje') String? errorMensaje,
+    dynamic metadata,
     @JsonKey(name: 'created_at') required DateTime createdAt,
-    @JsonKey(name: 'updated_at') required DateTime updatedAt,
+    dynamic reclamo,
   }) = _NotificacionModel;
 
   const NotificacionModel._();
+
+  /// Helper to check if read
+  bool get leida => leidaAt != null;
 
   /// From JSON
   factory NotificacionModel.fromJson(Map<String, dynamic> json) =>
@@ -39,3 +49,4 @@ class NotificacionModel with _$NotificacionModel {
     );
   }
 }
+

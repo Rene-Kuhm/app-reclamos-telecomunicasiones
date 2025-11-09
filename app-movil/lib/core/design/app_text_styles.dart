@@ -3,12 +3,12 @@ import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// Sistema de tipografía profesional
-/// Usa Inter font (similar a Slack, Notion)
+/// Usa Poppins font (matching reference admin panel)
 class AppTextStyles {
   AppTextStyles._();
 
   // Base font family
-  static String get _fontFamily => GoogleFonts.inter().fontFamily!;
+  static String get _fontFamily => GoogleFonts.poppins().fontFamily!;
 
   // Font weights
   static const FontWeight thin = FontWeight.w100;
@@ -22,7 +22,7 @@ class AppTextStyles {
   static const FontWeight black = FontWeight.w900;
 
   // Display styles (Extra large headings)
-  static TextStyle displayLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle displayLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 57,
         fontWeight: bold,
         letterSpacing: -0.25,
@@ -30,7 +30,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle displayMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle displayMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 45,
         fontWeight: bold,
         letterSpacing: 0,
@@ -38,7 +38,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle displaySmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle displaySmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 36,
         fontWeight: bold,
         letterSpacing: 0,
@@ -47,7 +47,7 @@ class AppTextStyles {
       );
 
   // Headline styles (Large headings)
-  static TextStyle headlineLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle headlineLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 32,
         fontWeight: semiBold,
         letterSpacing: 0,
@@ -55,7 +55,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle headlineMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle headlineMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 28,
         fontWeight: semiBold,
         letterSpacing: 0,
@@ -63,7 +63,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle headlineSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle headlineSmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 24,
         fontWeight: semiBold,
         letterSpacing: 0,
@@ -72,7 +72,7 @@ class AppTextStyles {
       );
 
   // Title styles (Medium headings)
-  static TextStyle titleLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle titleLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 22,
         fontWeight: medium,
         letterSpacing: 0,
@@ -80,7 +80,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle titleMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle titleMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: medium,
         letterSpacing: 0.15,
@@ -88,7 +88,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle titleSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle titleSmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: medium,
         letterSpacing: 0.1,
@@ -97,7 +97,7 @@ class AppTextStyles {
       );
 
   // Body styles (Regular text)
-  static TextStyle bodyLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle bodyLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 16,
         fontWeight: regular,
         letterSpacing: 0.5,
@@ -105,7 +105,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle bodyMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle bodyMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: regular,
         letterSpacing: 0.25,
@@ -113,7 +113,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle bodySmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle bodySmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: regular,
         letterSpacing: 0.4,
@@ -121,8 +121,16 @@ class AppTextStyles {
         color: color,
       );
 
+  static TextStyle bodyXSmall({Color? color}) => GoogleFonts.poppins(
+        fontSize: 10,
+        fontWeight: regular,
+        letterSpacing: 0.4,
+        height: 1.4,
+        color: color,
+      );
+
   // Label styles (Buttons, labels)
-  static TextStyle labelLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 14,
         fontWeight: medium,
         letterSpacing: 0.1,
@@ -130,7 +138,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle labelMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: medium,
         letterSpacing: 0.5,
@@ -138,7 +146,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle labelSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle labelSmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 11,
         fontWeight: medium,
         letterSpacing: 0.5,
@@ -147,7 +155,7 @@ class AppTextStyles {
       );
 
   // Custom styles
-  static TextStyle button({Color? color}) => GoogleFonts.inter(
+  static TextStyle button({Color? color}) => GoogleFonts.poppins(
         fontSize: 15,
         fontWeight: semiBold,
         letterSpacing: 0.5,
@@ -155,7 +163,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle caption({Color? color}) => GoogleFonts.inter(
+  static TextStyle caption({Color? color}) => GoogleFonts.poppins(
         fontSize: 12,
         fontWeight: regular,
         letterSpacing: 0.4,
@@ -163,7 +171,7 @@ class AppTextStyles {
         color: color,
       );
 
-  static TextStyle overline({Color? color}) => GoogleFonts.inter(
+  static TextStyle overline({Color? color}) => GoogleFonts.poppins(
         fontSize: 10,
         fontWeight: medium,
         letterSpacing: 1.5,
@@ -172,7 +180,7 @@ class AppTextStyles {
       );
 
   // Number styles (for statistics, counters)
-  static TextStyle numberLarge({Color? color}) => GoogleFonts.inter(
+  static TextStyle numberLarge({Color? color}) => GoogleFonts.poppins(
         fontSize: 40,
         fontWeight: bold,
         letterSpacing: -0.5,
@@ -181,7 +189,7 @@ class AppTextStyles {
         fontFeatures: [const FontFeature.tabularFigures()],
       );
 
-  static TextStyle numberMedium({Color? color}) => GoogleFonts.inter(
+  static TextStyle numberMedium({Color? color}) => GoogleFonts.poppins(
         fontSize: 28,
         fontWeight: semiBold,
         letterSpacing: -0.5,
@@ -190,7 +198,7 @@ class AppTextStyles {
         fontFeatures: [const FontFeature.tabularFigures()],
       );
 
-  static TextStyle numberSmall({Color? color}) => GoogleFonts.inter(
+  static TextStyle numberSmall({Color? color}) => GoogleFonts.poppins(
         fontSize: 18,
         fontWeight: semiBold,
         letterSpacing: 0,

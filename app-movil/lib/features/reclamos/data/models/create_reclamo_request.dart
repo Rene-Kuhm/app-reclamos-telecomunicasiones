@@ -10,7 +10,10 @@ class CreateReclamoRequest with _$CreateReclamoRequest {
     required String titulo,
     required String descripcion,
     required String categoria,
+    String? subcategoria,
     required String prioridad,
+    String? direccion,
+    Map<String, dynamic>? infoContacto,
   }) = _CreateReclamoRequest;
 
   /// From JSON

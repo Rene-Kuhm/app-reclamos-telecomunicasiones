@@ -60,14 +60,20 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
     required String titulo,
     required String descripcion,
     required String categoria,
+    String? subcategoria,
     required String prioridad,
+    String? direccion,
+    Map<String, dynamic>? infoContacto,
   }) async {
     try {
       final request = CreateReclamoRequest(
         titulo: titulo,
         descripcion: descripcion,
         categoria: categoria,
+        subcategoria: subcategoria,
         prioridad: prioridad,
+        direccion: direccion,
+        infoContacto: infoContacto,
       );
 
       final model = await _remoteDataSource.createReclamo(request);
@@ -98,6 +104,21 @@ class ReclamosRepositoryImpl implements ReclamosRepository {
       );
 
       final model = await _remoteDataSource.updateReclamo(id, request);
+      return Right(model.toEntity());
+    } on ApiError catch (error) {
+      return Left(error);
+    } catch (error) {
+      return Left(ErrorHandler.handleError(error));
+    }
+  }
+
+  @override
+  Future<Either<ApiError, Reclamo>> cambiarEstado({
+    required String id,
+    required String nuevoEstado,
+  }) async {
+    try {
+      final model = await _remoteDataSource.cambiarEstado(id, nuevoEstado);
       return Right(model.toEntity());
     } on ApiError catch (error) {
       return Left(error);

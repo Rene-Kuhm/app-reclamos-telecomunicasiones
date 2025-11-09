@@ -214,6 +214,25 @@ class ReclamoDetailNotifier extends StateNotifier<ReclamoDetailState> {
     );
   }
 
+  /// Change reclamo status
+  Future<bool> cambiarEstado(String nuevoEstado) async {
+    final result = await _repository.cambiarEstado(
+      id: reclamoId,
+      nuevoEstado: nuevoEstado,
+    );
+
+    return result.fold(
+      (error) {
+        state = state.copyWith(error: error.message);
+        return false;
+      },
+      (reclamo) {
+        state = state.copyWith(reclamo: reclamo);
+        return true;
+      },
+    );
+  }
+
   /// Refresh all data
   Future<void> refresh() async {
     await Future.wait([

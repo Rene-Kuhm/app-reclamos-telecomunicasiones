@@ -73,6 +73,18 @@ class ReclamosRemoteDataSource {
     return ReclamoModel.fromJson(response.data['data'] ?? response.data);
   }
 
+  /// Change reclamo status
+  Future<ReclamoModel> cambiarEstado(
+    String id,
+    String nuevoEstado,
+  ) async {
+    final response = await _dioClient.patch(
+      '/api/v1/reclamos/$id/estado/$nuevoEstado',
+    );
+
+    return ReclamoModel.fromJson(response.data['data'] ?? response.data);
+  }
+
   /// Delete reclamo
   Future<void> deleteReclamo(String id) async {
     await _dioClient.delete(

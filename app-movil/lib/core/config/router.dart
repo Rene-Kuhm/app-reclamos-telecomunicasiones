@@ -7,7 +7,7 @@ import '../../features/auth/presentation/screens/login_screen.dart';
 import '../../features/auth/presentation/screens/register_screen.dart';
 import '../../features/auth/presentation/screens/forgot_password_screen.dart';
 import '../../features/auth/presentation/screens/reset_password_screen.dart';
-import '../../features/home/presentation/screens/home_screen.dart';
+import '../../features/home/presentation/screens/adaptive_home_screen.dart';
 import '../../features/reclamos/presentation/screens/reclamos_list_screen.dart';
 import '../../features/reclamos/presentation/screens/reclamo_detail_screen.dart';
 import '../../features/reclamos/presentation/screens/create_reclamo_screen.dart';
@@ -17,6 +17,9 @@ import '../../features/perfil/presentation/screens/perfil_screen.dart';
 import '../../features/perfil/presentation/screens/edit_perfil_screen.dart';
 import '../../features/perfil/presentation/screens/change_password_screen.dart';
 import '../../features/perfil/presentation/screens/settings_screen.dart';
+// import '../../features/analytics/presentation/screens/analytics_screen.dart';
+// import '../../features/kanban/presentation/screens/kanban_board_screen.dart';
+import '../../features/settings/presentation/screens/settings_screen.dart' as enterprise_settings;
 
 /// Refresh stream for GoRouter to listen to auth state changes
 class GoRouterRefreshStream extends ChangeNotifier {
@@ -92,7 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // Home route
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        builder: (context, state) => const AdaptiveHomeScreen(),
       ),
 
       // Reclamos routes
@@ -141,6 +144,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/perfil/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+
+      // Enterprise features routes
+      // GoRoute(
+      //   path: '/analytics',
+      //   builder: (context, state) => const AnalyticsScreen(),
+      // ),
+      // GoRoute(
+      //   path: '/kanban',
+      //   builder: (context, state) => const KanbanBoardScreen(),
+      // ),
+      GoRoute(
+        path: '/settings',
+        builder: (context, state) => const enterprise_settings.SettingsScreen(),
       ),
     ],
   );
